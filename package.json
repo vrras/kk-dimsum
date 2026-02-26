@@ -15,7 +15,7 @@
     "@mui/material": "^7.3.8",
     "@mui/material-nextjs": "^7.3.8",
     "@prisma/adapter-better-sqlite3": "^7.4.1",
-    "@prisma/client": "^7.4.1",
+    "@prisma/client": "^5.22.0",
     "better-sqlite3": "^12.6.2",
     "clsx": "^2.1.1",
     "lucide-react": "^0.575.0",
@@ -36,7 +36,7 @@
     "@types/react-dom": "^18",
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
-    "prisma": "^7.4.1",
+    "prisma": "^5.22.0",
     "typescript": "^5"
   }
 }

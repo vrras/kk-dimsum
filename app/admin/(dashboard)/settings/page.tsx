@@ -33,9 +33,6 @@ export default function AdminSettingsPage() {
     openHour: '08:00',
     closeHour: '22:00',
     closedDays: [] as number[],
-    bankName: '',
-    bankAccount: '',
-    bankAccountName: '',
     waNumber: '',
     bankAccounts: [] as { bankName: string; bankAccount: string; bankAccountName: string }[]
   });
@@ -62,9 +59,6 @@ export default function AdminSettingsPage() {
               openHour: data.openHour || '08:00',
               closeHour: data.closeHour || '22:00',
               closedDays: data.closedDays || [],
-              bankName: data.bankName || '',
-              bankAccount: data.bankAccount || '',
-              bankAccountName: data.bankAccountName || '',
               waNumber: data.waNumber || '',
               bankAccounts: data.bankAccounts || []
             });
@@ -93,6 +87,9 @@ export default function AdminSettingsPage() {
       if (!res.ok) throw new Error('Gagal menyimpan');
       
       setSnackbar({ open: true, message: 'Pengaturan berhasil disimpan!', severity: 'success' });
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     } catch {
       setSnackbar({ open: true, message: 'Terjadi kesalahan saat menyimpan pengaturan.', severity: 'error' });
     } finally {
@@ -362,37 +359,6 @@ export default function AdminSettingsPage() {
                     </Grid>
                   </Paper>
                 ))}
-
-                {/* Legacy Fields (Optional: Keep for fallback or migration) */}
-                {formData.bankAccounts.length === 0 && (
-                  <>
-                    <Divider sx={{ my: 1 }} />
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                      Pengaturan rekening default (Legacy):
-                    </Typography>
-                    <TextField 
-                      label="Nama Bank" 
-                      name="bankName" 
-                      fullWidth 
-                      value={formData.bankName} 
-                      onChange={handleChange} 
-                    />
-                    <TextField 
-                      label="Nomor Rekening" 
-                      name="bankAccount" 
-                      fullWidth 
-                      value={formData.bankAccount} 
-                      onChange={handleChange} 
-                    />
-                    <TextField 
-                      label="Atas Nama" 
-                      name="bankAccountName" 
-                      fullWidth 
-                      value={formData.bankAccountName} 
-                      onChange={handleChange} 
-                    />
-                  </>
-                )}
               </Stack>
             </CardContent>
           </Card>

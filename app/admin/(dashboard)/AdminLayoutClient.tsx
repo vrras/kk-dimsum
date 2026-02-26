@@ -27,6 +27,16 @@ export default function AdminLayoutClient({ children, session }: { children: Rea
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [storeName, setStoreName] = React.useState('Nama Toko');
+
+  React.useEffect(() => {
+    fetch('/api/admin/settings')
+      .then(res => res.json())
+      .then(data => {
+        if (data.storeName) setStoreName(data.storeName);
+      })
+      .catch(err => console.error('Failed to fetch settings:', err));
+  }, []);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -54,7 +64,7 @@ export default function AdminLayoutClient({ children, session }: { children: Rea
               lineHeight: 1.2
             }}
           >
-            KK DIMSUM
+            {storeName.toUpperCase()}
           </Typography>
           <Typography variant="caption" sx={{ mt: 0.5, display: 'block' }}>
             <Box component="span" sx={{ bgcolor: 'primary.light', color: 'primary.main', px: 1, py: 0.25, borderRadius: 1, fontWeight: 'bold', fontSize: '0.65rem' }}>

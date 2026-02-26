@@ -34,14 +34,17 @@ export default async function CustomerHomePage({
     where.name = { contains: search };
   }
 
-  const [menus, categories] = await Promise.all([
+  const [menus, categories, settings] = await Promise.all([
     prisma.menu.findMany({
       where,
       include: { category: true },
       orderBy: { categoryId: 'asc' }
     }),
-    prisma.category.findMany()
+    prisma.category.findMany(),
+    prisma.settings.findFirst()
   ]);
+
+  const storeName = settings?.storeName || 'Nama Toko';
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#fafafa', pb: 10 }}>
@@ -104,7 +107,7 @@ export default async function CustomerHomePage({
               fontSize: { xs: '2.2rem', sm: '3rem', md: '3.75rem' }
             }}
           >
-            KK Dimsum
+            {storeName}
           </Typography>
           <Typography 
             variant="body1" 
@@ -273,7 +276,7 @@ export default async function CustomerHomePage({
                       justifyContent: 'center'
                     }}>
                       <Typography color="primary.light" variant="button" fontWeight={800} sx={{ letterSpacing: { xs: 0, sm: 2 }, fontSize: { xs: '0.65rem', sm: '0.875rem' }, opacity: 0.6 }}>
-                        KK DIMSUM
+                        {storeName.toUpperCase()}
                       </Typography>
                     </Box>
                   )}

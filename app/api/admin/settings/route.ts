@@ -45,7 +45,7 @@ export async function PUT(req: Request) {
     
     // Whitelist only valid fields for Prisma
     const validFields = [
-      'bankName', 'bankAccount', 'bankAccountName', 'waNumber', 
+      'waNumber', 
       'storeName', 'storeAddress', 'openHour', 'closeHour', 'isOpen', 'bankAccounts', 'closedDays'
     ];
     

@@ -3,7 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Category {
@@ -73,9 +75,6 @@ model Promo {
 
 model Settings {
   id              String   @id @default("1")
-  bankName        String   @default("BCA")
-  bankAccount     String   @default("1234567890")
-  bankAccountName String   @default("KK Dimsum Pusat")
   waNumber        String   @default("6281234567890")
   storeName       String   @default("KK Dimsum")
   storeAddress    String   @default("Jakarta")

@@ -46,6 +46,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const { orderStatus, paymentStatus, paymentRejectionReason } = body;
 
     const currentOrder = await prisma.order.findUnique({ where: { id: params.id }, include: { items: { include: { menu: true } } } });
+    const settings = await prisma.settings.findFirst();
+    const storeName = settings?.storeName || 'Nama Toko';
     if (!currentOrder) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
@@ -101,7 +103,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     }
     // Jika admin mengubah status pesanan ke READY (Siap diantar/diambil)
     else if (orderStatus === 'READY' && currentOrder.orderStatus !== 'READY') {
-      messageToCustomer = `🛵 *PESANAN SIAP*\n\nHalo kak ${currentOrder.customerName}, pesanan *${currentOrder.orderNumber}* sudah siap dikirim/diambil.\n\nSelamat menikmati Jajanan KK Dimsum! 😋`;
+      messageToCustomer = `🛵 *PESANAN SIAP*\n\nHalo kak ${currentOrder.customerName}, pesanan *${currentOrder.orderNumber}* sudah siap dikirim/diambil.\n\nSelamat menikmati Jajanan ${storeName}! 😋`;
     }
     // Jika pesanan batal
     else if (orderStatus === 'CANCELLED' && currentOrder.orderStatus !== 'CANCELLED') {

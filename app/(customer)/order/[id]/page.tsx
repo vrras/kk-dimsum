@@ -20,17 +20,25 @@ import AlertTitle from '@mui/material/AlertTitle';
 // Karena menggunakan { params }, ini Server Component
 export default async function OrderDetailPage({ params }: { params: { id: string } }) {
   
-  const order = await prisma.order.findUnique({
-    where: { id: params.id },
-    include: { items: { include: { menu: true } } }
-  });
+  const [order, settings] = await Promise.all([
+    prisma.order.findUnique({
+      where: { id: params.id },
+      include: {
+        items: {
+          include: {
+            menu: true
+          }
+        }
+      }
+    }),
+    prisma.settings.findFirst()
+  ]);
+
+  const storeName = settings?.storeName || 'Nama Toko';
 
   if (!order) {
     redirect('/'); // Order tak ditemukan
   }
-  
-  // Ambil pengaturan toko
-  const settings = await prisma.settings.findFirst();
   
   // Parse bank accounts
   let bankAccounts: { bankName: string; bankAccount: string; bankAccountName: string }[] = [];
@@ -42,21 +50,12 @@ export default async function OrderDetailPage({ params }: { params: { id: string
     }
   }
 
-  // Fallback to legacy fields if no bank accounts are set in the new array
-  if (bankAccounts.length === 0 && settings?.bankName) {
-    bankAccounts = [{
-      bankName: settings.bankName,
-      bankAccount: settings.bankAccount || '',
-      bankAccountName: settings.bankAccountName || ''
-    }];
-  }
-
   // Default fallback if everything is empty
   if (bankAccounts.length === 0) {
     bankAccounts = [{
       bankName: 'BCA',
       bankAccount: '1234567890',
-      bankAccountName: 'KK Dimsum Pusat'
+      bankAccountName: storeName
     }];
   }
 
@@ -102,7 +101,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
         }}>
           <CheckCircle2 size={64} color="#16a34a" style={{ marginBottom: '1rem' }} />
           <Typography variant="h5" sx={{ fontWeight: 900, mb: 1, color: '#166534' }}>Pesanan Selesai!</Typography>
-          <Typography color="text.secondary">Terima kasih telah berbelanja di KK Dimsum. Semoga harimu menyenangkan!</Typography>
+          <Typography color="text.secondary">Terima kasih telah berbelanja di {storeName}. Semoga harimu menyenangkan!</Typography>
         </Paper>
       ) : order.orderStatus === 'CANCELLED' ? (
         <Paper elevation={0} sx={{ 

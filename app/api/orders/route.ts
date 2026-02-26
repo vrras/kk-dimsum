@@ -101,8 +101,10 @@ export async function POST(req: Request) {
 
     let messageToCustomer = '';
 
+    const storeName = settings?.storeName || 'Nama Toko';
+
     if (newOrder.paymentMethod === 'TRANSFER') {
-      messageToCustomer = `Halo *${name}*, terima kasih telah memesan di KK Dimsum! 🧾
+      messageToCustomer = `Halo *${name}*, terima kasih telah memesan di ${storeName}! 🧾
 
 *No. Pesanan: ${newOrder.orderNumber}*
 💰 *Total Tagihan: ${formatCurrency(totalAmount)}*
@@ -123,7 +125,7 @@ Mohon siapkan pembayaran saat pesanan tiba ya kak.
 Cek detail pesanan kamu di sini:
 ${process.env.NEXTAUTH_URL}/order/${newOrder.id}
 
-Terima kasih telah memesan di *KK Dimsum*! 🥟💕`;
+Terima kasih telah memesan di *${storeName}*! 🥟💕`;
     }
 
     // --- Notifikasi WhatsApp ke Admin ---

@@ -2,7 +2,7 @@
 
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Lock, User } from 'lucide-react';
 import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
@@ -19,7 +19,17 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [storeName, setStoreName] = useState('Nama Toko');
   const router = useRouter();
+
+  useEffect(() => {
+    fetch('/api/admin/settings')
+      .then(res => res.json())
+      .then(data => {
+        if (data.storeName) setStoreName(data.storeName);
+      })
+      .catch(err => console.error('Failed to fetch settings:', err));
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,7 +92,7 @@ export default function AdminLoginPage() {
                 letterSpacing: '-0.5px'
               }}
             >
-              KK Dimsum
+              {storeName}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Portal Administrasi
@@ -157,7 +167,7 @@ export default function AdminLoginPage() {
           </Box>
           
           <Typography variant="caption" sx={{ mt: 4, opacity: 0.6 }}>
-            &copy; {new Date().getFullYear()} KK Dimsum — All rights reserved.
+            &copy; {new Date().getFullYear()} {storeName} — All rights reserved.
           </Typography>
         </Paper>
       </Container>

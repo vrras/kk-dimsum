@@ -3,10 +3,16 @@ import './globals.css'
 import { CartProvider } from '@/components/CartProvider'
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v14-appRouter'
 import ThemeWrapper from '@/components/ThemeWrapper'
+import prisma from '@/lib/prisma'
 
-export const metadata: Metadata = {
-  title: 'KK Dimsum - Jajanan Enak & Praktis',
-  description: 'Pesan jajanan dimsum favoritmu secara online sekarang juga!',
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await prisma.settings.findFirst()
+  const storeName = settings?.storeName || 'Nama Toko'
+  
+  return {
+    title: `${storeName} - Jajanan Enak & Praktis`,
+    description: 'Pesan jajanan dimsum favoritmu secara online sekarang juga!',
+  }
 }
 
 export default function RootLayout({

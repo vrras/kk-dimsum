@@ -32,7 +32,7 @@ export async function GET() {
       closeHour: settings.closeHour,
       closedDays: storeSettings.closedDays,
       currentTime: new Date().toISOString(),
-      storeName: settings.storeName || 'KK Dimsum',
+      storeName: settings.storeName || 'Nama Toko',
       storeAddress: settings.storeAddress || ''
     });
 
