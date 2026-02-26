@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Category {
+  id    String @id @default(uuid())
+  name  String @unique
+  menus Menu[]
+}
+
+model Menu {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  price       Int
+  imageUrl    String?
+  isAvailable Boolean  @default(true)
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  orderItems  OrderItem[]
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  orderNumber     String      @unique
+  customerName    String
+  customerWa      String
+  customerAddress String
+  notes           String?
+  paymentMethod   String      // "CASH" | "TRANSFER"
+  paymentStatus   String      @default("UNPAID")
+  paymentProof    String?
+  promoCode       String?
+  paymentRejectionReason String?
+  totalAmount     Int
+  orderStatus     String      @default("PENDING") // PENDING | PROCESSING | READY | COMPLETED | CANCELLED
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  items           OrderItem[]
+}
+
+model OrderItem {
+  id        String @id @default(uuid())
+  orderId   String
+  menuId    String
+  menuName  String?
+  quantity  Int
+  price     Int
+  subtotal  Int?
+  order     Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menu      Menu   @relation(fields: [menuId], references: [id])
+}
+
+model Promo {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  type        String?  @default("flat")
+  discount    Int
+  minOrder    Int      @default(0)
+  maxUses     Int?
+  usedCount   Int      @default(0)
+  isActive    Boolean  @default(true)
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Settings {
+  id              String   @id @default("1")
+  bankName        String   @default("BCA")
+  bankAccount     String   @default("1234567890")
+  bankAccountName String   @default("KK Dimsum Pusat")
+  waNumber        String   @default("6281234567890")
+  storeName       String   @default("KK Dimsum")
+  storeAddress    String   @default("Jakarta")
+  openHour        String   @default("08:00")
+  closeHour       String   @default("22:00")
+  isOpen          Boolean  @default(true)
+  bankAccounts    String   @default("[]")
+  closedDays      String   @default("[]")
+  updatedAt       DateTime @updatedAt
+}
