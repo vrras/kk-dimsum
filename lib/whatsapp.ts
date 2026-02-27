@@ -1,6 +1,7 @@
 import { Client, LocalAuth } from 'whatsapp-web.js';
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 
 const waClientSingleton = () => {
   const dataPath = path.join(process.cwd(), '.wwebjs_auth');
@@ -11,7 +12,15 @@ const waClientSingleton = () => {
       dataPath: dataPath
     }),
     puppeteer: {
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu'
+      ],
       headless: true,
     }
   });
@@ -80,6 +89,34 @@ export const initWhatsApp = async () => {
   }
 
   console.log('🔄 Initializing WhatsApp Client...');
+  
+  // --- START CLEANUP ---
+  const sessionId = 'kk-dimsum-admin';
+  const sessionPath = path.join(process.cwd(), '.wwebjs_auth', `session-${sessionId}`);
+  
+  // 1. Kill any ghost processes first so they release the lock
+  try {
+      // This kills only the chrome process associated with THIS sessionId
+      execSync(`pkill -f "session-${sessionId}"`);
+      console.log(`✅ Killed ghost processes for session-${sessionId}`);
+  } catch (e) { /* No process found, that's fine */ }
+
+  // 2. Delete ONLY the lock files
+  const lockFiles = ['SingletonLock', 'SingletonCookie', 'SingletonSocket'];
+
+  lockFiles.forEach(file => {
+      const fullPath = path.join(sessionPath, file);
+      if (fs.existsSync(fullPath)) {
+          try {
+              fs.unlinkSync(fullPath);
+              console.log(`✅ Deleted lock: ${file}`);
+          } catch (err: any) {
+              console.error(`❌ Could not delete ${file}:`, err.message);
+          }
+      }
+  });
+  // --- END CLEANUP ---
+
   try {
     await waClient.initialize();
   } catch (error) {
