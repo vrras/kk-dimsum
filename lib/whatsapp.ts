@@ -99,7 +99,7 @@ export const initWhatsApp = async () => {
       // This kills only the chrome process associated with THIS sessionId
       execSync(`pkill -f "session-${sessionId}"`);
       console.log(`✅ Killed ghost processes for session-${sessionId}`);
-  } catch (e) { /* No process found, that's fine */ }
+  } catch { /* No process found, that's fine */ }
 
   // 2. Delete ONLY the lock files
   const lockFiles = ['SingletonLock', 'SingletonCookie', 'SingletonSocket'];
@@ -110,8 +110,8 @@ export const initWhatsApp = async () => {
           try {
               fs.unlinkSync(fullPath);
               console.log(`✅ Deleted lock: ${file}`);
-          } catch (err: any) {
-              console.error(`❌ Could not delete ${file}:`, err.message);
+          } catch (err) {
+              console.error(`❌ Could not delete ${file}:`, (err as Error).message);
           }
       }
   });
