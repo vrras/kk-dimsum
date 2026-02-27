@@ -6,8 +6,16 @@ import ThemeWrapper from '@/components/ThemeWrapper'
 import prisma from '@/lib/prisma'
 
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = await prisma.settings.findFirst()
-  const storeName = settings?.storeName || 'Nama Toko'
+  let storeName = 'Nama Toko'
+  
+  try {
+    const settings = await prisma.settings.findFirst()
+    if (settings?.storeName) {
+      storeName = settings.storeName
+    }
+  } catch (error) {
+    console.warn('Failed to fetch settings during metadata generation, using fallback:', error)
+  }
   
   return {
     title: `${storeName} - Jajanan Enak & Praktis`,

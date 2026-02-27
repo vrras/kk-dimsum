@@ -17,6 +17,8 @@ import IconButton from '@mui/material/IconButton';
 import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
 
+export const dynamic = 'force-dynamic';
+
 // Karena menggunakan { params }, ini Server Component
 export default async function OrderDetailPage({ params }: { params: { id: string } }) {
   
