@@ -99,7 +99,6 @@ export const initWhatsApp = async () => {
   // Agar tidak membunuh process yang sedang inisialisasi / sudah jalan
   if (!globalThis.waHasTriedCleanup) {
     const sessionId = 'kk-dimsum-admin';
-    const sessionPath = path.join(process.cwd(), '.wwebjs_auth', `session-${sessionId}`);
     
     console.log('🧹 Cleaning up stale sessions for first start...');
     // 1. Kill any ghost processes first so they release the lock
@@ -108,20 +107,32 @@ export const initWhatsApp = async () => {
         console.log(`✅ Killed ghost processes for session-${sessionId}`);
     } catch { /* No process found, that's fine */ }
 
-    // 2. Delete ONLY the lock files
-    const lockFiles = ['SingletonLock', 'SingletonCookie', 'SingletonSocket'];
-
-    lockFiles.forEach(file => {
-        const fullPath = path.join(sessionPath, file);
-        if (fs.existsSync(fullPath)) {
-            try {
+    // 2. Delete ALL lock files recursively
+    try {
+      const authDir = path.join(process.cwd(), '.wwebjs_auth');
+      if (fs.existsSync(authDir)) {
+        const deleteSingletonFiles = (dir: string) => {
+          const files = fs.readdirSync(dir, { withFileTypes: true });
+          for (const file of files) {
+            const fullPath = path.join(dir, file.name);
+            if (file.isDirectory()) {
+              deleteSingletonFiles(fullPath);
+            } else if (file.name.toLowerCase().startsWith('singleton')) {
+              try {
                 fs.unlinkSync(fullPath);
-                console.log(`✅ Deleted lock: ${file}`);
-            } catch (err) {
-                console.error(`❌ Could not delete ${file}:`, (err as Error).message);
+                console.log(`✅ Deleted lock file: ${fullPath}`);
+              } catch (err) {
+                console.error(`❌ Could not delete ${fullPath}:`, (err as Error).message);
+              }
             }
-        }
-    });
+          }
+        };
+        deleteSingletonFiles(authDir);
+      }
+    } catch (err) {
+      console.error('❌ Error during recursive lock cleanup:', (err as Error).message);
+    }
+    
     globalThis.waHasTriedCleanup = true;
   }
   // --- END CLEANUP ---
