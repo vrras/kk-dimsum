@@ -25,6 +25,7 @@ declare global {
   var waQrCode: string | undefined
   var waIsReady: boolean
   var waIsInitializing: boolean
+  var waListenersAttached: boolean
   /* eslint-enable no-var */
 }
 
@@ -33,46 +34,52 @@ globalThis.waClientGlobal = waClient; // Always store in globalThis
 globalThis.waIsReady = globalThis.waIsReady ?? false;
 globalThis.waQrCode = globalThis.waQrCode ?? undefined;
 globalThis.waIsInitializing = globalThis.waIsInitializing ?? false;
+globalThis.waListenersAttached = globalThis.waListenersAttached ?? false;
 
 export const initWhatsApp = async () => {
   if (globalThis.waIsReady || globalThis.waIsInitializing) return;
   
   globalThis.waIsInitializing = true;
+  
+  // Attach listeners only once
+  if (!globalThis.waListenersAttached) {
+    waClient.on('qr', (qr) => {
+      console.log('📌 QR RECEIVED');
+      globalThis.waQrCode = qr;
+      globalThis.waIsReady = false;
+    });
+
+    waClient.on('ready', () => {
+      console.log('✅ WhatsApp Client is Ready!');
+      globalThis.waIsReady = true;
+      globalThis.waQrCode = undefined;
+    });
+
+    waClient.on('authenticated', () => {
+      console.log('✅ WhatsApp Authenticated!');
+    });
+
+    waClient.on('auth_failure', () => {
+      console.error('❌ WhatsApp Auth Failure!');
+      globalThis.waIsReady = false;
+      globalThis.waQrCode = undefined;
+    });
+
+    waClient.on('disconnected', () => {
+      console.error('❌ WhatsApp Disconnected!');
+      globalThis.waIsReady = false;
+      globalThis.waQrCode = undefined;
+      
+      // Automatically try to re-initialize using the guarded function
+      setTimeout(() => {
+        initWhatsApp().catch(console.error);
+      }, 5000);
+    });
+
+    globalThis.waListenersAttached = true;
+  }
+
   console.log('🔄 Initializing WhatsApp Client...');
-
-  waClient.on('qr', (qr) => {
-    console.log('📌 QR RECEIVED');
-    globalThis.waQrCode = qr;
-    globalThis.waIsReady = false;
-  });
-
-  waClient.on('ready', () => {
-    console.log('✅ WhatsApp Client is Ready!');
-    globalThis.waIsReady = true;
-    globalThis.waQrCode = undefined;
-  });
-
-  waClient.on('authenticated', () => {
-    console.log('✅ WhatsApp Authenticated!');
-  });
-
-  waClient.on('auth_failure', () => {
-    console.error('❌ WhatsApp Auth Failure!');
-    globalThis.waIsReady = false;
-    globalThis.waQrCode = undefined;
-  });
-
-  waClient.on('disconnected', () => {
-    console.error('❌ WhatsApp Disconnected!');
-    globalThis.waIsReady = false;
-    globalThis.waQrCode = undefined;
-    
-    // Automatically try to re-initialize
-    setTimeout(() => {
-      waClient.initialize().catch(console.error);
-    }, 5000);
-  });
-
   try {
     await waClient.initialize();
   } catch (error) {
