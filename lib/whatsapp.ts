@@ -1,11 +1,14 @@
 import { Client, LocalAuth } from 'whatsapp-web.js';
 import fs from 'fs';
+import path from 'path';
 
 const waClientSingleton = () => {
+  const dataPath = path.join(process.cwd(), '.wwebjs_auth');
+
   const client = new Client({
     authStrategy: new LocalAuth({
       clientId: 'kk-dimsum-admin',
-      dataPath: './.wwebjs_auth'
+      dataPath: dataPath
     }),
     puppeteer: {
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
@@ -21,24 +24,20 @@ declare global {
   var waClientGlobal: undefined | ReturnType<typeof waClientSingleton>
   var waQrCode: string | undefined
   var waIsReady: boolean
+  var waIsInitializing: boolean
   /* eslint-enable no-var */
 }
 
 export const waClient = globalThis.waClientGlobal ?? waClientSingleton();
+globalThis.waClientGlobal = waClient; // Always store in globalThis
 globalThis.waIsReady = globalThis.waIsReady ?? false;
 globalThis.waQrCode = globalThis.waQrCode ?? undefined;
-
-if (process.env.NODE_ENV !== 'production') {
-  globalThis.waClientGlobal = waClient;
-}
-
-// Hanya inisialisasi jika belum pernah atau sedang tidak berjalan
-let isInitializing = false;
+globalThis.waIsInitializing = globalThis.waIsInitializing ?? false;
 
 export const initWhatsApp = async () => {
-  if (globalThis.waIsReady || isInitializing) return;
+  if (globalThis.waIsReady || globalThis.waIsInitializing) return;
   
-  isInitializing = true;
+  globalThis.waIsInitializing = true;
   console.log('🔄 Initializing WhatsApp Client...');
 
   waClient.on('qr', (qr) => {
@@ -79,7 +78,7 @@ export const initWhatsApp = async () => {
   } catch (error) {
     console.error('Gagal inisialisasi WhatsApp:', error);
   } finally {
-    isInitializing = false;
+    globalThis.waIsInitializing = false;
   }
 };
 
@@ -118,3 +117,26 @@ export const sendMessage = async (phone: string, message: string) => {
     return false;
   }
 };
+
+// -------------------------------------------------------
+// Graceful Shutdown: tutup Chrome dengan bersih saat
+// PM2 stop/restart agar SingletonLock tidak tertinggal
+// -------------------------------------------------------
+const handleShutdown = async (signal: string) => {
+  console.log(`⚙️ Menangkap sinyal ${signal}. Menutup WhatsApp Client...`);
+  try {
+    if (globalThis.waIsReady || globalThis.waIsInitializing) {
+      await waClient.destroy();
+      console.log('✅ WhatsApp Client berhasil ditutup.');
+    }
+  } catch (err) {
+    console.error('❌ Gagal menutup WhatsApp Client secara bersih:', err);
+  } finally {
+    globalThis.waIsReady = false;
+    globalThis.waIsInitializing = false;
+    process.exit(0);
+  }
+};
+
+process.on('SIGINT', () => handleShutdown('SIGINT'));
+process.on('SIGTERM', () => handleShutdown('SIGTERM'));
