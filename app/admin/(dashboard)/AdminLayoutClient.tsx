@@ -17,7 +17,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Utensils, ShoppingBag, Ticket, QrCode, Settings, Menu } from 'lucide-react';
+import { LayoutDashboard, Utensils, ShoppingBag, Ticket, Settings, Menu } from 'lucide-react';
 import LogoutButton from './LogoutButton';
 
 const drawerWidth = 264;
@@ -79,7 +79,6 @@ export default function AdminLayoutClient({ children, session }: { children: Rea
           { text: 'Kelola Pesanan', icon: <ShoppingBag size={20} />, href: '/admin/orders' },
           { text: 'Menu & Kategori', icon: <Utensils size={20} />, href: '/admin/menu' },
           { text: 'Kode Promo', icon: <Ticket size={20} />, href: '/admin/promo' },
-          { text: 'WhatsApp Setup', icon: <QrCode size={20} />, href: '/admin/wa-setup' },
           { text: 'Pengaturan', icon: <Settings size={20} />, href: '/admin/settings' },
         ].map((item) => (
           <ListItem key={item.text} disablePadding sx={{ mb: 1 }}>

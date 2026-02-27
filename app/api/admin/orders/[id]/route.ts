@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { sendMessage } from '@/lib/whatsapp';
+import { sendMessage } from '@/lib/connekthub';
 import fs from 'fs';
 import path from 'path';
 
@@ -61,7 +61,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
         }
-        finalPaymentProof = null; // Set null di database setelah file dihapus
+        finalPaymentProof = null;
       } catch (error) {
         console.error('Gagal menghapus file bukti pembayaran:', error);
       }
@@ -77,45 +77,37 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       }
     });
 
-    // Explicitly construct the response to avoid any weirdness
-    const responseData = {
-      ...updatedOrder
-    };
+    const responseData = { ...updatedOrder };
 
-    console.log('API DEBUG: updatedOrder result ->', JSON.stringify(responseData, null, 2));
-
-    // Kirim notifikasi WhatsApp ke Customer jika status berubah
-    let waNumber = currentOrder.customerWa.replace(/\D/g, '');
-    if (waNumber.startsWith('0')) {
-      waNumber = '62' + waNumber.substring(1);
-    }
-    
+    // --- Notifikasi WhatsApp ke Customer (Spintax Enhanced) ---
     let messageToCustomer = '';
 
     // Jika admin menolak pembayaran (REJECTED)
     if (paymentStatus === 'REJECTED' && currentOrder.paymentStatus !== 'REJECTED') {
-      messageToCustomer = `❌ *PEMBAYARAN DITOLAK*\n\nHalo kak ${currentOrder.customerName}, mohon maaf bukti pembayaran untuk pesanan *${currentOrder.orderNumber}* tidak dapat kami terima.\n\n*Alasan:* ${paymentRejectionReason || 'Bukti transfer tidak sesuai'}\n\nSilakan unggah kembali bukti pembayaran yang benar melalui link ini: ${process.env.NEXTAUTH_URL}/order/${currentOrder.id}\n\nTerima kasih! 🙏`;
+      messageToCustomer = `{❌|⚠️} *PEMBAYARAN DITOLAK*\n\n{Halo|Hai} kak ${currentOrder.customerName}, {mohon maaf|maaf banget} bukti pembayaran untuk pesanan *${currentOrder.orderNumber}* tidak dapat kami terima.\n\n*Alasan:* ${paymentRejectionReason || 'Bukti transfer tidak sesuai'}\n\nSilakan {unggah kembali|upload ulang} bukti pembayaran yang benar melalui link ini: ${process.env.NEXTAUTH_URL}/order/${currentOrder.id}\n\n{Terima kasih|Ditunggu ya}! 🙏`;
     }
     // Jika admin mengubah status pesanan ke PROCESSING
     else if (orderStatus === 'PROCESSING' && currentOrder.orderStatus !== 'PROCESSING') {
-      const paymentConfirm = currentOrder.paymentMethod === 'TRANSFER' ? 'Pembayaran kamu telah kami terima dan ' : '';
-      messageToCustomer = `👨‍🍳 *PESANAN DIPROSES*\n\nHalo kak ${currentOrder.customerName}, ${paymentConfirm}pesanan *${currentOrder.orderNumber}* sedang kami siapkan.\n\nMohon ditunggu ya kak! 🥢`;
+      const paymentConfirm = currentOrder.paymentMethod === 'TRANSFER' ? 'pembayaran kamu telah kami {terima|verifikasi} dan ' : '';
+      messageToCustomer = `{👨‍🍳|🍳} *PESANAN DIPROSES*\n\n{Halo|Hai} kak ${currentOrder.customerName}, ${paymentConfirm}pesanan *${currentOrder.orderNumber}* sedang kami {siapkan|buatkan}.\n\n{Mohon ditunggu ya kak!|Ditunggu ya!|Sabar ya, sebentar lagi siap!} 🥢`;
     }
-    // Jika admin mengubah status pesanan ke READY (Siap diantar/diambil)
+    // Jika admin mengubah status pesanan ke READY
     else if (orderStatus === 'READY' && currentOrder.orderStatus !== 'READY') {
-      messageToCustomer = `🛵 *PESANAN SIAP*\n\nHalo kak ${currentOrder.customerName}, pesanan *${currentOrder.orderNumber}* sudah siap dikirim/diambil.\n\nSelamat menikmati Jajanan ${storeName}! 😋`;
+      messageToCustomer = `{🛵|🥡|🥟} *PESANAN SIAP*\n\n{Halo|Hai} kak ${currentOrder.customerName}, pesanan *${currentOrder.orderNumber}* {sudah siap|siap dikirim/diambil}.\n\n{Selamat menikmati|Enjoy} Jajanan ${storeName}! 😋`;
     }
     // Jika pesanan batal
     else if (orderStatus === 'CANCELLED' && currentOrder.orderStatus !== 'CANCELLED') {
-      messageToCustomer = `❌ *PESANAN DIBATALKAN*\n\nMohon maaf kak ${currentOrder.customerName}, pesanan *${currentOrder.orderNumber}* dibatalkan.\n\nUntuk info lebih lanjut, hubungi admin kami.`;
+      messageToCustomer = `{❌|🚫} *PESANAN DIBATALKAN*\n\n{Mohon maaf|Maaf} kak ${currentOrder.customerName}, pesanan *${currentOrder.orderNumber}* dibatalkan.\n\nUntuk info lebih lanjut, {hubungi admin kami|silakan chat admin}.`;
     }
 
     if (messageToCustomer) {
-      await sendMessage(`${waNumber}@c.us`, messageToCustomer).catch(console.error);
+      // sendMessage will format phone number correctly
+      await sendMessage(currentOrder.customerWa, messageToCustomer).catch(console.error);
     }
 
     return NextResponse.json(responseData);
-  } catch {
+  } catch (error) {
+    console.error('Order update error:', error);
     return NextResponse.json({ error: 'Gagal mengubah pesanan' }, { status: 500 });
   }
 }

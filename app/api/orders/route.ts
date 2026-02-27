@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { sendMessage } from '@/lib/whatsapp';
+import { sendMessage } from '@/lib/connekthub';
 import { formatCurrency } from '@/lib/utils';
 import { generateOrderNumber } from '@/lib/utils';
 import { isStoreOpen, StoreSettings } from '@/lib/store';
@@ -24,7 +24,11 @@ export async function POST(req: Request) {
 
     // Dapatkan nomor WA Admin dari Settings (atau fallback template)
     const settings = await prisma.settings.findFirst();
-    const adminWA = settings?.waNumber || process.env.ADMIN_WHATSAPP;
+    const adminWA = settings?.waNumber;
+
+    if (!adminWA) {
+      console.warn("⚠️ Notifikasi admin dilewati: Nomor WA Admin belum diatur di Pengaturan Toko.");
+    }
 
     // Validasi Toko Buka / Tutup
     let currentlyOpen = true;
@@ -95,63 +99,31 @@ export async function POST(req: Request) {
       }
     });
 
-    // --- Notifikasi WhatsApp ke Customer ---
-    let custWaFormat = whatsapp.replace(/\D/g, '');
-    if (custWaFormat.startsWith('0')) custWaFormat = '62' + custWaFormat.substring(1);
-
+    // --- Notifikasi WhatsApp ke Customer (Spintax Enchanced) ---
     let messageToCustomer = '';
-
     const storeName = settings?.storeName || 'Nama Toko';
 
     if (newOrder.paymentMethod === 'TRANSFER') {
-      messageToCustomer = `Halo *${name}*, terima kasih telah memesan di ${storeName}! 🧾
-
-*No. Pesanan: ${newOrder.orderNumber}*
-💰 *Total Tagihan: ${formatCurrency(totalAmount)}*
-💳 *Metode Bayar: Transfer Bank*
-
-Silakan lakukan transfer dan *unggah bukti pembayaran* melalui link di bawah ini agar pesanan dapat segera kami proses:
-${process.env.NEXTAUTH_URL}/order/${newOrder.id}
-
-Terima kasih! 🥟💕`;
+      messageToCustomer = `{Halo|Hai|Halo Kak} *${name}*, {terima kasih|makasih|thanks} telah memesan di *${storeName}*! 🧾\n\n*No. Pesanan: ${newOrder.orderNumber}*\n💰 *Total Tagihan: ${formatCurrency(totalAmount)}*\n💳 *Metode Bayar: Transfer Bank*\n\nSilakan lakukan transfer dan *unggah bukti pembayaran* melalui link di bawah ini agar pesanan dapat {segera kami proses|langsung kami buatkan}:\n${process.env.NEXTAUTH_URL}/order/${newOrder.id}\n\n{Terima kasih|Ditunggu ya}! 🥟💕`;
     } else {
-      messageToCustomer = `Halo *${name}*, pesanan kamu (*${newOrder.orderNumber}*) telah kami terima! 🧾
-
-*No. Pesanan: ${newOrder.orderNumber}*
-💰 *Total Tagihan: ${formatCurrency(totalAmount)}*
-💳 *Metode Bayar: COD / Bayar Tunai*
-
-Mohon siapkan pembayaran saat pesanan tiba ya kak.
-Cek detail pesanan kamu di sini:
-${process.env.NEXTAUTH_URL}/order/${newOrder.id}
-
-Terima kasih telah memesan di *${storeName}*! 🥟💕`;
+      messageToCustomer = `{Halo|Hai|Halo Kak} *${name}*, pesanan kamu (*${newOrder.orderNumber}*) telah kami {terima|proses}! 🧾\n\n*No. Pesanan: ${newOrder.orderNumber}*\n💰 *Total Tagihan: ${formatCurrency(totalAmount)}*\n💳 *Metode Bayar: COD / Bayar Tunai*\n\nMohon siapkan pembayaran saat pesanan tiba ya kak.\nCek detail pesanan kamu di sini:\n${process.env.NEXTAUTH_URL}/order/${newOrder.id}\n\n{Terima kasih telah memesan|Ditunggu pesanannya} di *${storeName}*! 🥟💕`;
     }
 
     // --- Notifikasi WhatsApp ke Admin ---
-    const messageToAdmin = `🚨 *PESANAN BARU MASUK!* 🚨
+    const messageToAdmin = `🚨 *PESANAN BARU MASUK!* 🚨\n\n👤 Oleh: ${name} (${whatsapp})\n🧾 No: ${newOrder.orderNumber}\n💰 Total: ${formatCurrency(totalAmount)}\n📍 Alamat: ${address}\n📝 Catatan: ${notes || '-'}\n\nSilakan cek dashboard admin untuk proses lebih lanjut!`;
 
-👤 Oleh: ${name} (${whatsapp})
-🧾 No: ${newOrder.orderNumber}
-💰 Total: ${formatCurrency(totalAmount)}
-📍 Alamat: ${address}
-📝 Catatan: ${notes || '-'}
-
-Silakan cek dashboard admin untuk proses lebih lanjut!`;
-
-    // Kirim notifikasi secara asynchronous tapi tetap ditunggu agar proses tidak di-kill oleh Next.js serverless
-    const waPromises = [sendMessage(`${custWaFormat}@c.us`, messageToCustomer)];
+    // Kirim notifikasi secara asynchronous
+    const waPromises = [sendMessage(whatsapp, messageToCustomer)];
     
     if (adminWA) {
-      let adminWaFormat = adminWA.replace(/\D/g, '');
-      if (adminWaFormat.startsWith('0')) adminWaFormat = '62' + adminWaFormat.substring(1);
-      waPromises.push(sendMessage(`${adminWaFormat}@c.us`, messageToAdmin));
+      waPromises.push(sendMessage(adminWA, messageToAdmin));
     }
 
     await Promise.allSettled(waPromises);
 
     return NextResponse.json(newOrder, { status: 201 });
-  } catch {
+  } catch (error) {
+    console.error('Order creation error:', error);
     return NextResponse.json({ error: 'Gagal membuat pesanan' }, { status: 500 });
   }
 }
