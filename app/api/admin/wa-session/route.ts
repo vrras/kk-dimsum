@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { initWhatsApp } from '@/lib/whatsapp';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     // Memastikan inisialisasi WA instance saat API ini diakses
