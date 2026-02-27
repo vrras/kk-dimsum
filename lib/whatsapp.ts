@@ -22,6 +22,8 @@ const waClientSingleton = () => {
         '--disable-gpu'
       ],
       headless: true,
+      // User Agent is critical to avoid "Can't link device" errors on Linux
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
     }
   });
 
@@ -35,6 +37,7 @@ declare global {
   var waIsReady: boolean
   var waIsInitializing: boolean
   var waListenersAttached: boolean
+  var waHasTriedCleanup: boolean
   /* eslint-enable no-var */
 }
 
@@ -44,6 +47,7 @@ globalThis.waIsReady = globalThis.waIsReady ?? false;
 globalThis.waQrCode = globalThis.waQrCode ?? undefined;
 globalThis.waIsInitializing = globalThis.waIsInitializing ?? false;
 globalThis.waListenersAttached = globalThis.waListenersAttached ?? false;
+globalThis.waHasTriedCleanup = globalThis.waHasTriedCleanup ?? false;
 
 export const initWhatsApp = async () => {
   if (globalThis.waIsReady || globalThis.waIsInitializing) return;
@@ -91,30 +95,35 @@ export const initWhatsApp = async () => {
   console.log('🔄 Initializing WhatsApp Client...');
   
   // --- START CLEANUP ---
-  const sessionId = 'kk-dimsum-admin';
-  const sessionPath = path.join(process.cwd(), '.wwebjs_auth', `session-${sessionId}`);
-  
-  // 1. Kill any ghost processes first so they release the lock
-  try {
-      // This kills only the chrome process associated with THIS sessionId
-      execSync(`pkill -f "session-${sessionId}"`);
-      console.log(`✅ Killed ghost processes for session-${sessionId}`);
-  } catch { /* No process found, that's fine */ }
+  // Hanya lakukan cleanup pkill SEKALI saja saat aplikasi pertama kali jalan (cold start)
+  // Agar tidak membunuh process yang sedang inisialisasi / sudah jalan
+  if (!globalThis.waHasTriedCleanup) {
+    const sessionId = 'kk-dimsum-admin';
+    const sessionPath = path.join(process.cwd(), '.wwebjs_auth', `session-${sessionId}`);
+    
+    console.log('🧹 Cleaning up stale sessions for first start...');
+    // 1. Kill any ghost processes first so they release the lock
+    try {
+        execSync(`pkill -f "session-${sessionId}"`);
+        console.log(`✅ Killed ghost processes for session-${sessionId}`);
+    } catch { /* No process found, that's fine */ }
 
-  // 2. Delete ONLY the lock files
-  const lockFiles = ['SingletonLock', 'SingletonCookie', 'SingletonSocket'];
+    // 2. Delete ONLY the lock files
+    const lockFiles = ['SingletonLock', 'SingletonCookie', 'SingletonSocket'];
 
-  lockFiles.forEach(file => {
-      const fullPath = path.join(sessionPath, file);
-      if (fs.existsSync(fullPath)) {
-          try {
-              fs.unlinkSync(fullPath);
-              console.log(`✅ Deleted lock: ${file}`);
-          } catch (err) {
-              console.error(`❌ Could not delete ${file}:`, (err as Error).message);
-          }
-      }
-  });
+    lockFiles.forEach(file => {
+        const fullPath = path.join(sessionPath, file);
+        if (fs.existsSync(fullPath)) {
+            try {
+                fs.unlinkSync(fullPath);
+                console.log(`✅ Deleted lock: ${file}`);
+            } catch (err) {
+                console.error(`❌ Could not delete ${file}:`, (err as Error).message);
+            }
+        }
+    });
+    globalThis.waHasTriedCleanup = true;
+  }
   // --- END CLEANUP ---
 
   try {
