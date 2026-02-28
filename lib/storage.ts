@@ -10,6 +10,17 @@ import sharp from 'sharp';
  * - Resize otomatis ke lebar maks 1920px untuk efisiensi
  */
 export async function uploadFile(file: File, prefix?: string): Promise<string> {
+  // Validasi Dasar: Tipe File
+  if (!file.type.startsWith('image/') && !file.name.toLowerCase().endsWith('.heic') && !file.name.toLowerCase().endsWith('.heif')) {
+    throw new Error('Format file tidak didukung. Harap unggah gambar (JPG, PNG, atau HEIC).');
+  }
+
+  // Validasi Dasar: Ukuran (Maks 10MB dari config)
+  const MAX_SIZE = 10 * 1024 * 1024;
+  if (file.size > MAX_SIZE) {
+    throw new Error('Ukuran file terlalu besar. Maksimal adalah 10 MB.');
+  }
+
   const bytes = await file.arrayBuffer();
   let buffer = Buffer.from(bytes);
 

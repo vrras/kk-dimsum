@@ -21,9 +21,9 @@ export default function PaymentUploadForm({ orderId, existingProof }: { orderId:
     if (e.target.files && e.target.files.length > 0) {
       const selected = e.target.files[0];
       
-      // Validasi file (misal maks 5MB)
-      if (selected.size > 5 * 1024 * 1024) {
-        setError('Ukuran file maksimal 5MB');
+      // Validasi file (Maks 10MB sesuai config)
+      if (selected.size > 10 * 1024 * 1024) {
+        setError('Ukuran file maksimal 10MB');
         setFile(null);
         return;
       }
@@ -56,6 +56,9 @@ export default function PaymentUploadForm({ orderId, existingProof }: { orderId:
       });
 
       if (!res.ok) {
+        if (res.status === 413) {
+          throw new Error('File terlalu besar! Maksimal unggahan adalah 10 MB.');
+        }
         const data = await res.json();
         throw new Error(data.error || 'Gagal mengunggah bukti pembayaran');
       }

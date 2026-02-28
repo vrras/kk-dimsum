@@ -346,6 +346,14 @@ export default function AdminMenuPage() {
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
+
+                      // Validasi Client Side (10MB)
+                      if (file.size > 10 * 1024 * 1024) {
+                        setSnackbar({ open: true, message: 'Ukuran file maksimal 10MB', severity: 'error' });
+                        e.target.value = '';
+                        return;
+                      }
+
                       setIsUploading(true);
                       
                       // Reset input value so same file can be picked again
@@ -359,6 +367,9 @@ export default function AdminMenuPage() {
                           body: data,
                         });
                         if (!res.ok) {
+                          if (res.status === 413) {
+                            throw new Error('File terlalu besar! Maksimal unggahan adalah 10 MB.');
+                          }
                           const errorData = await res.json();
                           throw new Error(errorData.details || errorData.error || 'Upload failed');
                         }
