@@ -119,7 +119,7 @@ export default async function CustomerHomePage({
               mx: 'auto'
             }}
           >
-            Sajikan kehangatan dimsum favorit Anda di rumah dengan resep otentik.
+            {settings?.storeAddress || "Sajikan kehangatan dimsum favorit Anda di rumah dengan resep otentik."}
           </Typography>
           
           <StoreStatusBanner variant="hero" />

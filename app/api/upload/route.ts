@@ -16,6 +16,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ url: fileUrl });
   } catch (error) {
     console.error('Error uploading file:', error);
-    return NextResponse.json({ error: 'Gagal mengunggah file' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan tidak dikenal';
+    return NextResponse.json({ 
+      error: 'Gagal mengunggah file', 
+      details: errorMessage
+    }, { status: 500 });
   }
 }

@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { sendMessage } from '@/lib/connekthub';
 import { formatCurrency } from '@/lib/utils';
+import { uploadFile } from '@/lib/storage';
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -36,25 +37,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       }
     }
 
-    // Convert File to Buffer
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    // Buat nama file unik
-    const fileExtension = path.extname(file.name) || '.jpg';
-    const fileName = `${order.orderNumber}-${Date.now()}${fileExtension}`;
-    
-    // Path penyimpanan: public/uploads/
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-    
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    
-    const filePath = path.join(uploadDir, fileName);
-    fs.writeFileSync(filePath, buffer);
-
-    const relativePath = `/uploads/${fileName}`;
+    // Gunakan abstraksi storage untuk kompresi dan dukungan HEIC
+    const relativePath = await uploadFile(file, order.orderNumber);
 
     await prisma.order.update({
       where: { id: order.id },
@@ -80,6 +64,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   } catch (error) {
     console.error('Error uploading payment proof:', error);
-    return NextResponse.json({ error: 'Gagal memproses unggahan' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan tidak dikenal';
+    return NextResponse.json({ 
+      error: 'Gagal memproses unggahan', 
+      details: errorMessage
+    }, { status: 500 });
   }
 }

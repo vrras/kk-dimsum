@@ -358,11 +358,19 @@ export default function AdminMenuPage() {
                           method: 'POST',
                           body: data,
                         });
-                        if (!res.ok) throw new Error('Upload failed');
+                        if (!res.ok) {
+                          const errorData = await res.json();
+                          throw new Error(errorData.details || errorData.error || 'Upload failed');
+                        }
                         const json = await res.json();
                         setFormData({ ...formData, imageUrl: json.url });
-                      } catch {
-                        setSnackbar({ open: true, message: 'Gagal mengupload gambar', severity: 'error' });
+                      } catch (error) {
+                        const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+                        setSnackbar({ 
+                          open: true, 
+                          message: `Gagal: ${errorMessage}`, 
+                          severity: 'error' 
+                        });
                       } finally {
                         setIsUploading(false);
                       }

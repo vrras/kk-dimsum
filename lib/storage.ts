@@ -1,24 +1,68 @@
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
+import sharp from 'sharp';
 
-// Abstraksi Storage/Penyimpanan Gambar
-// Ubah fungsi ini ke AWS S3, Cloudinary, atau layanan cloud lainnya jika diperlukan
-export async function uploadFile(file: File): Promise<string> {
+/**
+ * Abstraksi Storage/Penyimpanan Gambar
+ * Fitur:
+ * - Kompresi otomatis jika > 2MB
+ * - Konversi otomatis HEIC/HEIF (iPhone) ke JPEG
+ * - Resize otomatis ke lebar maks 1920px untuk efisiensi
+ */
+export async function uploadFile(file: File, prefix?: string): Promise<string> {
   const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
+  let buffer = Buffer.from(bytes);
 
   const originalName = file.name || 'image.jpg';
-  const ext = path.extname(originalName) || '';
+  let ext = path.extname(originalName).toLowerCase() || '.jpg';
+  const isHeic = ext === '.heic' || ext === '.heif';
+  
+  // Ganti ekstensi jika HEIC ke JPEG agar bisa dibaca browser
+  if (isHeic) {
+    ext = '.jpg';
+  }
+
+  const filenamePrefix = prefix ? `${prefix}-` : '';
   const randomString = Math.random().toString(36).substring(2, 10);
-  const uniqueFilename = `${Date.now()}-${randomString}${ext}`;
+  const uniqueFilename = `${filenamePrefix}${Date.now()}-${randomString}${ext}`;
   
   // Konfigurasi untuk Local System:
   const publicDir = path.join(process.cwd(), 'public', 'uploads');
   
   try {
     await mkdir(publicDir, { recursive: true });
-  } catch {
-    // Abaikan jika direktori sudah ada
+  } catch (err) {
+    const error = err as { code?: string; message?: string };
+    if (error.code !== 'EEXIST') {
+      console.error('Gagal membuat direktori upload:', error);
+      throw new Error(`Gagal membuat direktori penyimpanan: ${error.message || 'Unknown error'}`);
+    }
+  }
+
+  // Logika Kompresi dan Konversi
+  const sizeInMb = buffer.length / (1024 * 1024);
+  
+  if (sizeInMb > 2 || isHeic) {
+    try {
+      let sharpInstance = sharp(buffer);
+      
+      // Auto-orient berdasarkan EXIF (penting untuk foto HP agar tidak terbalik)
+      sharpInstance = sharpInstance.rotate();
+
+      // Resize jika terlalu lebar (Maks 1920px)
+      const metadata = await sharpInstance.metadata();
+      if (metadata.width && metadata.width > 1920) {
+        sharpInstance = sharpInstance.resize(1920);
+      }
+
+      const processedBuffer = await sharpInstance
+        .jpeg({ quality: 80, mozjpeg: true })
+        .toBuffer();
+      buffer = Buffer.from(processedBuffer);
+    } catch (err) {
+      console.error('Gagal mengompres gambar, menyimpan file asli:', err);
+      // Jika gagal kompres (misal format tidak didukung sharp), biarkan buffer asli
+    }
   }
 
   const filepath = path.join(publicDir, uniqueFilename);
