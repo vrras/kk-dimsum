@@ -2,9 +2,11 @@
 
 import * as React from 'react';
 import { useState, useEffect } from 'react';
+import { uploadFileAction } from '@/lib/upload-actions';
 import { formatCurrency } from '@/lib/utils';
 import { Plus, Edit, Trash2, X, Check } from 'lucide-react';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import WysiwygEditor from '@/components/WysiwygEditor';
 
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -362,19 +364,15 @@ export default function AdminMenuPage() {
                       try {
                         const data = new FormData();
                         data.append('file', file);
-                        const res = await fetch('/api/upload', {
-                          method: 'POST',
-                          body: data,
-                        });
-                        if (!res.ok) {
-                          if (res.status === 413) {
-                            throw new Error('File terlalu besar! Maksimal unggahan adalah 10 MB.');
-                          }
-                          const errorData = await res.json();
-                          throw new Error(errorData.details || errorData.error || 'Upload failed');
+                        
+                        // Use Server Action instead of fetch/Route Handler
+                        const result = await uploadFileAction(data);
+                        
+                        if (!result.success) {
+                          throw new Error(result.error || 'Upload failed');
                         }
-                        const json = await res.json();
-                        setFormData({ ...formData, imageUrl: json.url });
+                        
+                        setFormData({ ...formData, imageUrl: result.url as string });
                       } catch (error) {
                         const errorMessage = error instanceof Error ? error.message : 'Upload failed';
                         setSnackbar({ 
@@ -398,14 +396,10 @@ export default function AdminMenuPage() {
                 )}
               </Box>
 
-              <TextField 
+              <WysiwygEditor 
                 label="Deskripsi" 
-
-                multiline 
-                rows={3} 
-                fullWidth 
                 value={formData.description} 
-                onChange={e => setFormData({...formData, description: e.target.value})} 
+                onChange={content => setFormData({...formData, description: content})} 
               />
 
               <FormControlLabel

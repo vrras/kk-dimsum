@@ -3,6 +3,7 @@
 import { UploadCloud, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { uploadPaymentProofAction } from '@/lib/upload-actions';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
@@ -50,17 +51,11 @@ export default function PaymentUploadForm({ orderId, existingProof }: { orderId:
       const formData = new FormData();
       formData.append('file', file);
 
-      const res = await fetch(`/api/orders/${orderId}/payment`, {
-        method: 'POST',
-        body: formData,
-      });
+      // Use Server Action instead of Route Handler
+      const result = await uploadPaymentProofAction(orderId, formData);
 
-      if (!res.ok) {
-        if (res.status === 413) {
-          throw new Error('File terlalu besar! Maksimal unggahan adalah 10 MB.');
-        }
-        const data = await res.json();
-        throw new Error(data.error || 'Gagal mengunggah bukti pembayaran');
+      if (!result.success) {
+        throw new Error(result.error || 'Gagal mengunggah bukti pembayaran');
       }
 
       setSuccess(true);

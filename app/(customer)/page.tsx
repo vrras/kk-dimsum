@@ -1,20 +1,16 @@
 import prisma from '@/lib/prisma'
 import Link from 'next/link'
-import { formatCurrency } from '@/lib/utils'
-import { AddToCartButton, FloatingCart } from '@/components/AddToCartButton'
+import { FloatingCart } from '@/components/AddToCartButton'
 import SearchInput from '@/components/SearchInput'
 import Container from '@mui/material/Container'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
-import Card from '@mui/material/Card'
-import CardMedia from '@mui/material/CardMedia'
-import CardContent from '@mui/material/CardContent'
-import Chip from '@mui/material/Chip'
 import Stack from '@mui/material/Stack'
 import Paper from '@mui/material/Paper'
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
 import StoreStatusBanner from '@/components/StoreStatusBanner'
+import MenuCard from '@/components/MenuCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,7 +36,16 @@ export default async function CustomerHomePage({
       include: { category: true },
       orderBy: { categoryId: 'asc' }
     }),
-    prisma.category.findMany(),
+    prisma.category.findMany({
+      where: {
+        menus: {
+          some: {
+            isAvailable: true
+          }
+        }
+      },
+      orderBy: { name: 'asc' }
+    }),
     prisma.settings.findFirst()
   ]);
 
@@ -230,106 +235,7 @@ export default async function CustomerHomePage({
             }}
           >
             {menus.map((menu: { id: string; name: string; price: number; imageUrl: string | null; description: string | null; category?: { name: string } | null }) => (
-              <Card key={menu.id} sx={{ 
-                height: '100%', 
-                display: 'flex', 
-                flexDirection: 'column',
-                borderRadius: { xs: 3, sm: 4 },
-                border: 'none',
-                boxShadow: '0 10px 30px -10px rgba(0,0,0,0.05)',
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                bgcolor: 'white',
-                '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: '0 20px 40px -10px rgba(219, 39, 119, 0.15)'
-                }
-              }}>
-                <Box sx={{ position: 'relative', pt: '56.25%', overflow: 'hidden' }}>
-                  {menu.imageUrl ? (
-                    <CardMedia
-                      component="img"
-                      image={menu.imageUrl}
-                      alt={menu.name}
-                      sx={{ 
-                        position: 'absolute', 
-                        top: 0, 
-                        left: 0, 
-                        width: '100%', 
-                        height: '100%',
-                        objectFit: 'cover',
-                        transition: 'transform 0.5s ease',
-                        '&:hover': {
-                          transform: 'scale(1.05)'
-                        }
-                      }}
-                    />
-                  ) : (
-                    <Box sx={{ 
-                      position: 'absolute', 
-                      top: 0, 
-                      left: 0, 
-                      width: '100%', 
-                      height: '100%',
-                      background: 'linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <Typography color="primary.light" variant="button" fontWeight={800} sx={{ letterSpacing: { xs: 0, sm: 2 }, fontSize: { xs: '0.65rem', sm: '0.875rem' }, opacity: 0.6 }}>
-                        {storeName.toUpperCase()}
-                      </Typography>
-                    </Box>
-                  )}
-                  {/* Price tag over image */}
-                  <Box sx={{
-                    position: 'absolute',
-                    bottom: { xs: 4, sm: 10 },
-                    right: { xs: 4, sm: 10 },
-                    bgcolor: 'rgba(255, 255, 255, 0.95)',
-                    backdropFilter: 'blur(4px)',
-                    color: 'primary.main',
-                    px: { xs: 1, sm: 1.5 },
-                    py: { xs: 0.25, sm: 0.5 },
-                    borderRadius: { xs: 2, sm: 4 },
-                    fontWeight: 900,
-                    fontSize: { xs: '0.7rem', sm: '0.9rem' },
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                  }}>
-                    {formatCurrency(menu.price)}
-                  </Box>
-                </Box>
-                <CardContent sx={{ flexGrow: 1, p: { xs: 1.25, sm: 2 }, pb: { xs: 1.25, sm: 2 }, display: 'flex', flexDirection: 'column', gap: { xs: 0.5, sm: 0 } }}>
-                  <Box sx={{ mb: 'auto' }}>
-                    <Typography variant="h6" component="h3" sx={{ fontWeight: 800, lineHeight: 1.2, mb: { xs: 0.5, sm: 0.5 }, color: 'text.primary', fontSize: { xs: '0.8rem', sm: '1.1rem' } }}>
-                      {menu.name}
-                    </Typography>
-                    
-                    {menu.category && (
-                      <Chip 
-                        label={menu.category.name} 
-                        size="small" 
-                        sx={{ 
-                          mb: { xs: 0.5, sm: 1.5 }, 
-                          bgcolor: '#fdf2f8', 
-                          color: 'primary.main',
-                          fontWeight: 700,
-                          fontSize: { xs: '0.55rem', sm: '0.7rem' },
-                          height: { xs: 16, sm: 24 },
-                          border: '1px solid #fbcfe8'
-                        }} 
-                      />
-                    )}
-                    
-                    <Typography variant="body2" color="text.secondary" sx={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: { xs: 1.2, sm: 1.5 }, fontSize: { xs: '0.65rem', sm: '0.875rem' } }}>
-                      {menu.description || 'Sajian dimsum lezat siap menemani.'}
-                    </Typography>
-                  </Box>
-                  
-                  <Box sx={{ mt: 'auto', pt: { xs: 1, sm: 1.5 }, borderTop: '1px solid', borderColor: 'divider' }}>
-                    <AddToCartButton menu={menu} />
-                  </Box>
-                </CardContent>
-              </Card>
+              <MenuCard key={menu.id} menu={menu} storeName={storeName} />
             ))}
           </Box>
         )}
