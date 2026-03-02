@@ -47,3 +47,6 @@ next-env.d.ts
 .wwebjs_cache
 *.db
 *.sqlite
+
+# files
+/public/uploads/*

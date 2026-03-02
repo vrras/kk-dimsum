@@ -54,8 +54,9 @@ export default function AdminMenuPage() {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     name: '', description: '', price: '', imageUrl: '', categoryId: '', isAvailable: true
@@ -114,6 +115,11 @@ export default function AdminMenuPage() {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingId(null);
+    setSelectedFile(null);
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+      setImagePreview(null);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -121,13 +127,24 @@ export default function AdminMenuPage() {
     setIsSubmitting(true);
 
     try {
+      let finalImageUrl = formData.imageUrl;
+
+      // Upload gambar hanya saat submit (deferred upload)
+      if (selectedFile) {
+        const data = new FormData();
+        data.append('file', selectedFile);
+        const result = await uploadFileAction(data);
+        if (!result.success) throw new Error(result.error || 'Gagal mengunggah gambar');
+        finalImageUrl = result.url as string;
+      }
+
       const url = editingId ? `/api/admin/menu/${editingId}` : '/api/admin/menu';
       const method = editingId ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ ...formData, imageUrl: finalImageUrl })
       });
 
       if (!res.ok) throw new Error('Gagal menyimpan data');
@@ -135,8 +152,9 @@ export default function AdminMenuPage() {
       setSnackbar({ open: true, message: `Menu berhasil ${editingId ? 'diperbarui' : 'ditambahkan'}`, severity: 'success' });
       await fetchData();
       handleCloseModal();
-    } catch {
-      setSnackbar({ open: true, message: 'Terjadi kesalahan saat menyimpan data menu.', severity: 'error' });
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'Terjadi kesalahan saat menyimpan data menu.';
+      setSnackbar({ open: true, message: errMsg, severity: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -338,14 +356,14 @@ export default function AdminMenuPage() {
                 <Button 
                   component="label"
                   variant="outlined" 
-                  disabled={isUploading}
+                  disabled={isSubmitting}
                 >
-                  {isUploading ? 'Mengunggah...' : 'Pilih Gambar'}
+                  {selectedFile ? 'Ganti Gambar' : 'Pilih Gambar'}
                   <input 
                     type="file" 
                     accept="image/*"
                     hidden
-                    onChange={async (e) => {
+                    onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
 
@@ -356,40 +374,26 @@ export default function AdminMenuPage() {
                         return;
                       }
 
-                      setIsUploading(true);
-                      
+                      // Buat preview lokal tanpa upload ke server
+                      if (imagePreview) URL.revokeObjectURL(imagePreview);
+                      const localPreview = URL.createObjectURL(file);
+                      setImagePreview(localPreview);
+                      setSelectedFile(file);
+
                       // Reset input value so same file can be picked again
                       e.target.value = '';
-                      
-                      try {
-                        const data = new FormData();
-                        data.append('file', file);
-                        
-                        // Use Server Action instead of fetch/Route Handler
-                        const result = await uploadFileAction(data);
-                        
-                        if (!result.success) {
-                          throw new Error(result.error || 'Upload failed');
-                        }
-                        
-                        setFormData({ ...formData, imageUrl: result.url as string });
-                      } catch (error) {
-                        const errorMessage = error instanceof Error ? error.message : 'Upload failed';
-                        setSnackbar({ 
-                          open: true, 
-                          message: `Gagal: ${errorMessage}`, 
-                          severity: 'error' 
-                        });
-                      } finally {
-                        setIsUploading(false);
-                      }
                     }}
                   />
                 </Button>
-                {formData.imageUrl && (
+                {(imagePreview || formData.imageUrl) && (
                   <Box sx={{ mt: 2 }}>
-                    <Box component="img" src={formData.imageUrl} alt="Preview" sx={{ maxWidth: '100%', maxHeight: 150, borderRadius: 2, display: 'block', mx: 'auto', mb: 1 }} />
-                    <Button color="error" size="small" onClick={() => setFormData({...formData, imageUrl: ''})}>
+                    <Box component="img" src={imagePreview || formData.imageUrl} alt="Preview" sx={{ maxWidth: '100%', maxHeight: 150, borderRadius: 2, display: 'block', mx: 'auto', mb: 1 }} />
+                    <Button color="error" size="small" onClick={() => {
+                      if (imagePreview) URL.revokeObjectURL(imagePreview);
+                      setImagePreview(null);
+                      setSelectedFile(null);
+                      setFormData({...formData, imageUrl: ''});
+                    }}>
                       Hapus Gambar
                     </Button>
                   </Box>

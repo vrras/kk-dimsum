@@ -1,4 +1,4 @@
-import { writeFile, mkdir } from 'fs/promises';
+import { writeFile, mkdir, stat, unlink } from 'fs/promises';
 import path from 'path';
 import sharp from 'sharp';
 
@@ -81,4 +81,28 @@ export async function uploadFile(file: File, prefix?: string): Promise<string> {
 
   // Mengembalikan URL lokal yang dapat diakses dari browser
   return `/uploads/${uniqueFilename}`;
+}
+
+/**
+ * Menghapus file gambar lokal berdasarkan URL publiknya
+ */
+export async function deleteFile(fileUrl: string): Promise<void> {
+  if (!fileUrl || !fileUrl.startsWith('/uploads/')) return;
+  
+  try {
+    const cleanPath = fileUrl.startsWith('/') ? fileUrl.substring(1) : fileUrl;
+    const filepath = path.join(process.cwd(), 'public', cleanPath);
+    
+    // Gunakan stat untuk mengecek keberadaan file 
+    try {
+      await stat(filepath);
+      await unlink(filepath);
+    } catch (e: unknown) {
+      if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw e;
+      }
+    }
+  } catch (err) {
+    console.error(`Gagal menghapus file ${fileUrl}:`, err);
+  }
 }
