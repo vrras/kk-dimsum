@@ -155,6 +155,7 @@ export default async function CustomerHomePage({
             direction="row" 
             spacing={1.5} 
             sx={{ 
+              flexWrap: 'nowrap',
               overflowX: 'auto', 
               pb: 2,
               px: { xs: 1, md: 0 },
@@ -171,6 +172,8 @@ export default async function CustomerHomePage({
               sx={{ 
                 borderRadius: 20, 
                 whiteSpace: 'nowrap', 
+                flexShrink: 0,
+                minWidth: 'max-content',
                 px: { xs: 2, sm: 3 },
                 py: { xs: 0.75, sm: 1 },
                 fontSize: { xs: '0.8rem', sm: '0.875rem' },
@@ -194,6 +197,8 @@ export default async function CustomerHomePage({
                 sx={{ 
                   borderRadius: 20, 
                   whiteSpace: 'nowrap', 
+                  flexShrink: 0,
+                  minWidth: 'max-content',
                   px: { xs: 2, sm: 3 },
                   py: { xs: 0.75, sm: 1 },
                   fontSize: { xs: '0.8rem', sm: '0.875rem' },
