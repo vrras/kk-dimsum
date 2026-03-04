@@ -46,8 +46,6 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const { orderStatus, paymentStatus, paymentRejectionReason } = body;
 
     const currentOrder = await prisma.order.findUnique({ where: { id: params.id }, include: { items: { include: { menu: true } } } });
-    const settings = await prisma.settings.findFirst();
-    const storeName = settings?.storeName || 'Nama Toko';
     if (!currentOrder) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
