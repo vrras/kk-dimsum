@@ -125,7 +125,7 @@ export default function CheckoutPage() {
 
       const orderData = await res.json();
       
-      // Kosongkan cart lalu redirect
+      // Kosongkan cart lalu arahkan ke halaman detail order.
       clearCart();
       router.push(`/order/${orderData.id}`);
 

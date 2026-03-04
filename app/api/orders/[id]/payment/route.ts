@@ -24,6 +24,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ error: 'Pesanan tidak ditemukan' }, { status: 404 });
     }
 
+    if (!order.waThreadOpened) {
+      return NextResponse.json(
+        { error: 'Kirim konfirmasi WhatsApp ke admin terlebih dulu sebelum upload bukti transfer' },
+        { status: 400 }
+      );
+    }
+
     // Hapus bukti transfer lama jika ada
     if (order.paymentProof) {
       try {

@@ -53,6 +53,10 @@ export async function uploadPaymentProofAction(orderId: string, formData: FormDa
       throw new Error('Pesanan tidak ditemukan');
     }
 
+    if (!order.waThreadOpened) {
+      throw new Error('Kirim konfirmasi WhatsApp ke admin terlebih dulu sebelum upload bukti transfer');
+    }
+
     // Delete old proof if exists
     if (order.paymentProof) {
       try {

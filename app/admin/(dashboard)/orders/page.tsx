@@ -38,9 +38,28 @@ interface Order {
   paymentMethod: string;
   paymentStatus: string;
   orderStatus: string;
+  waThreadOpened: boolean;
+  waThreadOpenedAt?: string | null;
   paymentProof?: string;
   createdAt: string;
 }
+
+const getOrderStatusLabel = (status: string) => {
+  if (status === 'PENDING') return 'Menunggu Diproses';
+  return status;
+};
+
+const getDisplayStatusLabel = (order: Order) => {
+  if (order.orderStatus !== 'PENDING') {
+    return getOrderStatusLabel(order.orderStatus);
+  }
+
+  return isWaConfirmedForDisplay(order) ? 'Menunggu Diproses' : 'Menunggu Konfirmasi WhatsApp';
+};
+
+const isWaConfirmedForDisplay = (order: Order) => {
+  return order.waThreadOpened || order.orderStatus !== 'PENDING';
+};
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -49,6 +68,7 @@ export default function AdminOrdersPage() {
   // Filter states
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [waFilter, setWaFilter] = useState('ALL');
 
   const fetchOrders = useCallback(async () => {
     setIsLoading(true);
@@ -72,7 +92,12 @@ export default function AdminOrdersPage() {
     const matchesSearch = o.orderNumber.toUpperCase().includes(search.toUpperCase()) || 
                          o.customerName.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === 'ALL' || o.orderStatus === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesWa =
+      waFilter === 'ALL' ||
+      (waFilter === 'OPENED' && o.waThreadOpened) ||
+      (waFilter === 'PENDING' && !o.waThreadOpened);
+
+    return matchesSearch && matchesStatus && matchesWa;
   });
 
   return (
@@ -111,11 +136,22 @@ export default function AdminOrdersPage() {
                 }
               >
                 <MenuItem value="ALL">Semua Status</MenuItem>
-                <MenuItem value="PENDING">Pending</MenuItem>
+                <MenuItem value="PENDING">Menunggu Konfirmasi WhatsApp</MenuItem>
                 <MenuItem value="PROCESSING">Diproses</MenuItem>
                 <MenuItem value="READY">Siap Dikirim / Diambil</MenuItem>
                 <MenuItem value="COMPLETED">Selesai</MenuItem>
                 <MenuItem value="CANCELLED">Dibatalkan</MenuItem>
+              </Select>
+            </FormControl>
+
+            <FormControl size="small" sx={{ minWidth: 180 }}>
+              <Select
+                value={waFilter}
+                onChange={(e) => setWaFilter(e.target.value)}
+              >
+                <MenuItem value="ALL">Semua WA</MenuItem>
+                <MenuItem value="PENDING">Belum Chat</MenuItem>
+                <MenuItem value="OPENED">Sudah Chat</MenuItem>
               </Select>
             </FormControl>
           </Stack>
@@ -136,6 +172,7 @@ export default function AdminOrdersPage() {
                   <TableCell sx={{ fontWeight: 600 }}>Tanggal</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Nomor</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Pelanggan</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>WA Customer</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Total</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Pembayaran</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
@@ -145,7 +182,7 @@ export default function AdminOrdersPage() {
               <TableBody>
                 {filteredOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} align="center" sx={{ py: 5 }}>
+                    <TableCell colSpan={8} align="center" sx={{ py: 5 }}>
                       <Typography variant="body1" color="text.secondary">Tidak ada pesanan ditemukan.</Typography>
                     </TableCell>
                   </TableRow>
@@ -159,6 +196,23 @@ export default function AdminOrdersPage() {
                       <TableCell>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>{order.customerName}</Typography>
                         <Typography variant="caption" color="text.secondary">{order.customerWa}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Stack spacing={0.5} alignItems="flex-start">
+                          <Chip
+                            label={isWaConfirmedForDisplay(order) ? 'Sudah Chat' : 'Belum Chat'}
+                            size="small"
+                            color={isWaConfirmedForDisplay(order) ? 'success' : 'warning'}
+                            sx={{ fontWeight: 'bold', fontSize: '0.7rem' }}
+                          />
+                          <Typography variant="caption" color="text.secondary">
+                            {order.waThreadOpenedAt
+                              ? new Date(order.waThreadOpenedAt).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })
+                              : order.orderStatus === 'PENDING'
+                                ? 'Menunggu inbound webhook'
+                                : '-'}
+                          </Typography>
+                        </Stack>
                       </TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>{formatCurrency(order.totalAmount)}</TableCell>
                       <TableCell>
@@ -177,7 +231,7 @@ export default function AdminOrdersPage() {
                       </TableCell>
                       <TableCell>
                         <Chip 
-                          label={order.orderStatus}
+                          label={getDisplayStatusLabel(order)}
                           color={order.orderStatus === 'COMPLETED' ? 'success' : (order.orderStatus === 'CANCELLED' ? 'error' : 'secondary')}
                           sx={{ fontWeight: 'bold' }}
                         />

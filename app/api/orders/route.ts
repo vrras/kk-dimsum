@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { sendMessage } from '@/lib/connekthub';
-import { formatCurrency } from '@/lib/utils';
 import { generateOrderNumber } from '@/lib/utils';
 import { isStoreOpen, StoreSettings } from '@/lib/store';
+import { buildAdminWaLink } from '@/lib/order-whatsapp';
 
 export async function POST(req: Request) {
   try {
@@ -27,7 +26,7 @@ export async function POST(req: Request) {
     const adminWA = settings?.waNumber;
 
     if (!adminWA) {
-      console.warn("⚠️ Notifikasi admin dilewati: Nomor WA Admin belum diatur di Pengaturan Toko.");
+      console.warn("⚠️ Nomor WA Admin belum diatur di Pengaturan Toko.");
     }
 
     // Validasi Toko Buka / Tutup
@@ -99,29 +98,13 @@ export async function POST(req: Request) {
       }
     });
 
-    // --- Notifikasi WhatsApp ke Customer (Spintax Enchanced) ---
-    let messageToCustomer = '';
-    const storeName = settings?.storeName || 'Nama Toko';
+    const adminWaLink = adminWA
+      ? buildAdminWaLink(adminWA, {
+          orderNumber: newOrder.orderNumber,
+        })
+      : null;
 
-    if (newOrder.paymentMethod === 'TRANSFER') {
-      messageToCustomer = `{Halo|Hai|Halo Kak} *${name}*, {terima kasih|makasih|thanks} telah memesan di *${storeName}*! 🧾\n\n*No. Pesanan: ${newOrder.orderNumber}*\n💰 *Total Tagihan: ${formatCurrency(totalAmount)}*\n💳 *Metode Bayar: Transfer Bank*\n\nSilakan lakukan transfer dan *unggah bukti pembayaran* melalui link di bawah ini agar pesanan dapat {segera kami proses|langsung kami buatkan}:\n${process.env.NEXTAUTH_URL}/order/${newOrder.id}\n\n{Terima kasih|Ditunggu ya}! 🥟💕`;
-    } else {
-      messageToCustomer = `{Halo|Hai|Halo Kak} *${name}*, pesanan kamu (*${newOrder.orderNumber}*) telah kami {terima|proses}! 🧾\n\n*No. Pesanan: ${newOrder.orderNumber}*\n💰 *Total Tagihan: ${formatCurrency(totalAmount)}*\n💳 *Metode Bayar: COD / Bayar Tunai*\n\nMohon siapkan pembayaran saat pesanan tiba ya kak.\nCek detail pesanan kamu di sini:\n${process.env.NEXTAUTH_URL}/order/${newOrder.id}\n\n{Terima kasih telah memesan|Ditunggu pesanannya} di *${storeName}*! 🥟💕`;
-    }
-
-    // --- Notifikasi WhatsApp ke Admin ---
-    const messageToAdmin = `🚨 *PESANAN BARU MASUK!* 🚨\n\n👤 Oleh: ${name} (${whatsapp})\n🧾 No: ${newOrder.orderNumber}\n💰 Total: ${formatCurrency(totalAmount)}\n📍 Alamat: ${address}\n📝 Catatan: ${notes || '-'}\n\nSilakan cek dashboard admin untuk proses lebih lanjut!`;
-
-    // Kirim notifikasi secara asynchronous
-    const waPromises = [sendMessage(whatsapp, messageToCustomer)];
-    
-    if (adminWA) {
-      waPromises.push(sendMessage(adminWA, messageToAdmin));
-    }
-
-    await Promise.allSettled(waPromises);
-
-    return NextResponse.json(newOrder, { status: 201 });
+    return NextResponse.json({ ...newOrder, adminWaLink }, { status: 201 });
   } catch (error) {
     console.error('Order creation error:', error);
     return NextResponse.json({ error: 'Gagal membuat pesanan' }, { status: 500 });

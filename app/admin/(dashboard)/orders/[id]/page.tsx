@@ -54,11 +54,30 @@ interface Order {
   paymentMethod: 'TRANSFER' | 'CASH';
   paymentStatus: 'UNPAID' | 'PAID' | 'REJECTED';
   orderStatus: 'PENDING' | 'PROCESSING' | 'READY' | 'COMPLETED' | 'CANCELLED';
+  waThreadOpened: boolean;
+  waThreadOpenedAt?: string | null;
   paymentProof?: string;
   paymentRejectionReason?: string;
   promoCode?: string | null;
   items: OrderItem[];
 }
+
+const getOrderStatusLabel = (status: Order['orderStatus']) => {
+  if (status === 'PENDING') return 'Menunggu Diproses';
+  return status;
+};
+
+const isWaConfirmedForDisplay = (order: Order) => {
+  return order.waThreadOpened || order.orderStatus !== 'PENDING';
+};
+
+const getDisplayStatusLabel = (order: Order) => {
+  if (order.orderStatus !== 'PENDING') {
+    return getOrderStatusLabel(order.orderStatus);
+  }
+
+  return isWaConfirmedForDisplay(order) ? 'Menunggu Diproses' : 'Menunggu Konfirmasi WhatsApp';
+};
 
 export default function AdminOrderDetailPage({ params }: { params: { id: string } }) {
   const [order, setOrder] = useState<Order | null>(null);
@@ -197,6 +216,27 @@ export default function AdminOrderDetailPage({ params }: { params: { id: string 
                 </Box>
                 
                 <Grid container spacing={2} alignItems="center">
+                  <Grid size={{ xs: 4, sm: 3 }}>
+                    <Typography color="text.secondary">Konfirmasi WA</Typography>
+                  </Grid>
+                  <Grid size={{ xs: 8, sm: 9 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                      <Chip
+                        label={isWaConfirmedForDisplay(order) ? 'Sudah Chat' : 'Belum Chat'}
+                        size="small"
+                        color={isWaConfirmedForDisplay(order) ? 'success' : 'warning'}
+                        sx={{ fontWeight: 'bold' }}
+                      />
+                      <Typography variant="body2" color="text.secondary">
+                        {order.waThreadOpenedAt
+                          ? `Inbound diterima ${new Date(order.waThreadOpenedAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}`
+                          : order.orderStatus === 'PENDING'
+                            ? 'Belum ada inbound webhook dari customer.'
+                            : 'Diasumsikan terkonfirmasi untuk data lama.'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+
                   <Grid size={{ xs: 4, sm: 3 }}>
                     <Typography color="text.secondary">Nama</Typography>
                   </Grid>
@@ -428,7 +468,7 @@ export default function AdminOrderDetailPage({ params }: { params: { id: string 
                 <Box sx={{ mb: 3 }}>
                   <Typography color="text.secondary" gutterBottom>Status Pengerjaan</Typography>
                   <Chip 
-                    label={order.orderStatus} 
+                    label={getDisplayStatusLabel(order)} 
                     color={getOrderStatusColor(order.orderStatus) as 'success'|'primary'|'error'}
                     sx={{ fontWeight: 'bold' }}
                   />

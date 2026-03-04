@@ -42,6 +42,8 @@ model Order {
   paymentRejectionReason String?
   totalAmount     Int
   orderStatus     String      @default("PENDING") // PENDING | PROCESSING | READY | COMPLETED | CANCELLED
+  waThreadOpened  Boolean     @default(false)
+  waThreadOpenedAt DateTime?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   items           OrderItem[]

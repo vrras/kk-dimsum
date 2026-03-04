@@ -4,6 +4,7 @@ import Link from 'next/link';
 import prisma from '@/lib/prisma';
 import PaymentUploadForm from './PaymentUploadForm';
 import { redirect } from 'next/navigation';
+import { buildAdminWaLink } from '@/lib/order-whatsapp';
 import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -16,8 +17,17 @@ import Stack from '@mui/material/Stack';
 import IconButton from '@mui/material/IconButton';
 import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
+import InfoOutlined from '@mui/icons-material/InfoOutlined';
 
 export const dynamic = 'force-dynamic';
+
+const getPendingStatusLabel = (waThreadOpened: boolean, orderStatus: string, paymentStatus: string) => {
+  if (orderStatus !== 'PENDING') {
+    return paymentStatus === 'REJECTED' ? 'PEMBAYARAN DITOLAK' : orderStatus;
+  }
+
+  return waThreadOpened ? 'MENUNGGU DIPROSES' : 'MENUNGGU KONFIRMASI WHATSAPP';
+};
 
 // Karena menggunakan { params }, ini Server Component
 export default async function OrderDetailPage({ params }: { params: { id: string } }) {
@@ -62,6 +72,9 @@ export default async function OrderDetailPage({ params }: { params: { id: string
   }
 
   const waAdmin = settings?.waNumber || '6281234567890';
+  const adminWaLink = buildAdminWaLink(waAdmin, {
+    orderNumber: order.orderNumber,
+  });
 
   let statusBg = '#6b7280';
   if (order.orderStatus === 'PROCESSING') { statusBg = '#db2777'; }
@@ -91,7 +104,16 @@ export default async function OrderDetailPage({ params }: { params: { id: string
       </Box>
 
       {/* Hero Status */}
-      {order.orderStatus === 'COMPLETED' ? (
+      {!order.waThreadOpened ? (
+        <Alert
+          icon={<InfoOutlined />}
+          severity="warning"
+          sx={{ mb: 4, borderRadius: 4, bgcolor: '#fff7ed', border: '1px solid', borderColor: '#fdba74' }}
+        >
+          <AlertTitle sx={{ fontWeight: 900 }}>Konfirmasi WhatsApp Belum Dikirim</AlertTitle>
+          Pesanan belum masuk ke antrean proses. Klik tombol <strong>Hubungi Admin via WhatsApp</strong> di bawah, lalu kirim pesan yang sudah terisi agar admin bisa memproses pesanan ini.
+        </Alert>
+      ) : order.orderStatus === 'COMPLETED' ? (
         <Paper elevation={0} sx={{ 
           p: 4, 
           borderRadius: 4, 
@@ -134,6 +156,56 @@ export default async function OrderDetailPage({ params }: { params: { id: string
       ) : null}
 
       <Grid container spacing={4}>
+        <Grid size={{ xs: 12 }} sx={{ display: { xs: 'block', md: 'none' } }}>
+          <Paper
+            elevation={0}
+            sx={{
+              p: 3,
+              borderRadius: 4,
+              border: '1px solid',
+              borderColor: !order.waThreadOpened ? '#fdba74' : 'divider',
+              bgcolor: !order.waThreadOpened ? '#fff7ed' : 'white',
+            }}
+          >
+            <Typography variant="subtitle1" sx={{ fontWeight: 900, mb: 1 }}>
+              {!order.waThreadOpened ? 'Langkah Berikutnya' : 'Butuh Bantuan?'}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontWeight: 500, lineHeight: 1.6 }}>
+              {!order.waThreadOpened
+                ? 'Kirim pesan WhatsApp ke admin sekarang agar pesanan masuk ke antrean proses. Gunakan pesan yang sudah terisi supaya Order ID terbaca otomatis.'
+                : 'Kalau ada perubahan atau pertanyaan soal pesanan, kamu bisa lanjut chat admin lewat tombol ini.'}
+            </Typography>
+            {!order.waThreadOpened && (
+              <Typography
+                variant="caption"
+                sx={{ display: 'block', mb: 2, color: 'warning.dark', fontWeight: 700, lineHeight: 1.6 }}
+              >
+                Gunakan nomor WhatsApp yang sama dengan nomor yang kamu isi saat checkout. Jika berbeda, konfirmasi otomatis tidak akan terbaca sistem.
+              </Typography>
+            )}
+            <Button
+              component="a"
+              href={adminWaLink}
+              target="_blank"
+              rel="noreferrer"
+              variant="outlined"
+              fullWidth
+              startIcon={<MessageCircle size={20} />}
+              sx={{ 
+                borderRadius: 3, 
+                py: 1.5, 
+                fontWeight: 800,
+                borderColor: !order.waThreadOpened ? 'warning.main' : 'primary.light',
+                color: !order.waThreadOpened ? 'white' : 'primary.main',
+                bgcolor: !order.waThreadOpened ? 'warning.main' : 'transparent',
+                '&:hover': { bgcolor: 'secondary.light', borderColor: 'primary.main' }
+              }}
+            >
+              {!order.waThreadOpened ? 'Kirim Konfirmasi via WhatsApp' : 'Hubungi Admin via WhatsApp'}
+            </Button>
+          </Paper>
+        </Grid>
+
         {/* Order Details Column */}
         <Grid size={{ xs: 12, md: 8 }}>
           <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: '1px solid', borderColor: 'divider', mb: 4 }}>
@@ -143,11 +215,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                 <Typography variant="h6" sx={{ fontWeight: 900, color: 'primary.dark' }}>{order.orderNumber}</Typography>
               </Box>
               <Chip 
-                label={
-                  order.orderStatus === 'PENDING' ? 'MENUNGGU KONFIRMASI' : 
-                  order.paymentStatus === 'REJECTED' ? 'PEMBAYARAN DITOLAK' : 
-                  order.orderStatus
-                } 
+                label={getPendingStatusLabel(order.waThreadOpened, order.orderStatus, order.paymentStatus)}
                 sx={{ 
                   bgcolor: order.paymentStatus === 'REJECTED' ? '#dc2626' : statusBg, 
                   color: 'white', 
@@ -241,7 +309,13 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                 Setelah transfer, mohon unggah bukti pembayaran agar pesanan Anda dapat segera kami proses.
               </Typography>
 
-              <PaymentUploadForm orderId={order.id} existingProof={null} />
+              {order.waThreadOpened ? (
+                <PaymentUploadForm orderId={order.id} existingProof={null} />
+              ) : (
+                <Alert severity="warning" sx={{ borderRadius: 3, bgcolor: '#fff7ed', border: '1px solid', borderColor: '#fdba74' }}>
+                  Kirim konfirmasi WhatsApp ke admin terlebih dulu. Upload bukti transfer akan aktif setelah chat kamu diterima sistem.
+                </Alert>
+              )}
             </Paper>
           )}
 
@@ -316,14 +390,36 @@ export default async function OrderDetailPage({ params }: { params: { id: string
               </Stack>
             </Paper>
 
-            {/* Help Section */}
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontWeight: 500 }}>
-                Butuh bantuan dengan pesanan ini?
+            <Paper
+              elevation={0}
+              sx={{
+                p: 3,
+                borderRadius: 4,
+                border: '1px solid',
+                borderColor: !order.waThreadOpened ? '#fdba74' : 'divider',
+                bgcolor: !order.waThreadOpened ? '#fff7ed' : 'white',
+                display: { xs: 'none', md: 'block' },
+              }}
+            >
+              <Typography variant="subtitle1" sx={{ fontWeight: 900, mb: 1 }}>
+                {!order.waThreadOpened ? 'Langkah Berikutnya' : 'Butuh Bantuan?'}
               </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontWeight: 500, lineHeight: 1.6 }}>
+                {!order.waThreadOpened
+                  ? 'Kirim pesan WhatsApp ke admin sekarang agar pesanan masuk ke antrean proses. Gunakan pesan yang sudah terisi supaya Order ID terbaca otomatis.'
+                  : 'Kalau ada perubahan atau pertanyaan soal pesanan, kamu bisa lanjut chat admin lewat tombol ini.'}
+              </Typography>
+              {!order.waThreadOpened && (
+                <Typography
+                  variant="caption"
+                  sx={{ display: 'block', mb: 2, color: 'warning.dark', fontWeight: 700, lineHeight: 1.6 }}
+                >
+                  Gunakan nomor WhatsApp yang sama dengan nomor yang kamu isi saat checkout. Jika berbeda, konfirmasi otomatis tidak akan terbaca sistem.
+                </Typography>
+              )}
               <Button
                 component="a"
-                href={`https://wa.me/${waAdmin.replace(/\D/g, '').replace(/^0/, '62')}`}
+                href={adminWaLink}
                 target="_blank"
                 rel="noreferrer"
                 variant="outlined"
@@ -333,13 +429,15 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                   borderRadius: 3, 
                   py: 1.5, 
                   fontWeight: 800,
-                  borderColor: 'primary.light',
+                  borderColor: !order.waThreadOpened ? 'warning.main' : 'primary.light',
+                  color: !order.waThreadOpened ? 'white' : 'primary.main',
+                  bgcolor: !order.waThreadOpened ? 'warning.main' : 'transparent',
                   '&:hover': { bgcolor: 'secondary.light', borderColor: 'primary.main' }
                 }}
               >
-                Hubungi Admin
+                {!order.waThreadOpened ? 'Kirim Konfirmasi via WhatsApp' : 'Hubungi Admin via WhatsApp'}
               </Button>
-            </Box>
+            </Paper>
           </Stack>
         </Grid>
       </Grid>
