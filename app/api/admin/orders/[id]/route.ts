@@ -91,10 +91,6 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       const paymentConfirm = currentOrder.paymentMethod === 'TRANSFER' ? 'pembayaran kamu telah kami {terima|verifikasi} dan ' : '';
       messageToCustomer = `{👨‍🍳|🍳} *PESANAN DIPROSES*\n\n{Halo|Hai} kak ${currentOrder.customerName}, ${paymentConfirm}pesanan *${currentOrder.orderNumber}* sedang kami {siapkan|buatkan}.\n\n{Mohon ditunggu ya kak!|Ditunggu ya!|Sabar ya, sebentar lagi siap!} 🥢`;
     }
-    // Jika admin mengubah status pesanan ke READY
-    else if (orderStatus === 'READY' && currentOrder.orderStatus !== 'READY') {
-      messageToCustomer = `{🛵|🥡|🥟} *PESANAN SIAP*\n\n{Halo|Hai} kak ${currentOrder.customerName}, pesanan *${currentOrder.orderNumber}* {sudah siap|siap dikirim/diambil}.\n\n{Selamat menikmati|Enjoy} Jajanan ${storeName}! 😋`;
-    }
     // Jika pesanan batal
     else if (orderStatus === 'CANCELLED' && currentOrder.orderStatus !== 'CANCELLED') {
       messageToCustomer = `{❌|🚫} *PESANAN DIBATALKAN*\n\n{Mohon maaf|Maaf} kak ${currentOrder.customerName}, pesanan *${currentOrder.orderNumber}* dibatalkan.\n\nUntuk info lebih lanjut, {hubungi admin kami|silakan chat admin}.`;
