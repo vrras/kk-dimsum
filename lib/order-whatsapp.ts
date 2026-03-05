@@ -15,7 +15,7 @@ export const buildOrderDetailUrl = (orderId: string) => {
 
 export const buildAdminOrderPrefillText = (order: Pick<OrderWhatsAppPayload, 'orderNumber'>) => {
   return [
-    'Halo admin, saya sudah checkout ya.',
+    'Halo Putri, saya sudah checkout ya.',
     `Order ID: ${order.orderNumber}`,
     'Mohon dibantu proses pesanan saya. Terima kasih.',
   ].join('\n');
