@@ -10,6 +10,16 @@ type ConnektHubInboundPayload = {
   timestamp?: string;
 };
 
+const getInboundReplyDelayMs = () => {
+  const raw = process.env.CONNEKTHUB_INBOUND_REPLY_DELAY_MS;
+  if (!raw) return 60_000;
+
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 0) return 60_000;
+
+  return Math.floor(parsed);
+};
+
 const findOrderByInboundMessage = async (from: string, message: string) => {
   const normalizedSender = formatPhoneForCH(from);
   const extractedOrderNumber = extractOrderNumberFromMessage(message);
@@ -73,6 +83,7 @@ export async function POST(req: Request) {
     });
 
     if (!wasAlreadyOpened) {
+      const delayMs = getInboundReplyDelayMs();
       await sendMessage(
         matchedOrder.customerWa,
         buildWaThreadOpenedReply({
@@ -81,7 +92,8 @@ export async function POST(req: Request) {
           orderNumber: matchedOrder.orderNumber,
           paymentMethod: matchedOrder.paymentMethod,
           totalAmount: matchedOrder.totalAmount,
-        })
+        }),
+        { delayMs }
       );
     }
 

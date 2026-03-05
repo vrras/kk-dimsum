@@ -83,7 +83,11 @@ export const formatPhoneForCH = (phone: string) => {
   return formatted;
 };
 
-export const sendMessage = async (phone: string, message: string) => {
+interface SendMessageOptions {
+  delayMs?: number;
+}
+
+export const sendMessage = async (phone: string, message: string, options?: SendMessageOptions) => {
   try {
     const formattedPhone = formatPhoneForCH(phone);
     
@@ -93,7 +97,11 @@ export const sendMessage = async (phone: string, message: string) => {
         'Content-Type': 'application/json',
         'x-api-key': process.env.CONNEKTHUB_API_KEY || ''
       },
-      body: JSON.stringify({ phoneNumber: formattedPhone, message }),
+      body: JSON.stringify({
+        phoneNumber: formattedPhone,
+        message,
+        ...(options?.delayMs !== undefined ? { delayMs: options.delayMs } : {}),
+      }),
       cache: 'no-store'
     });
 
