@@ -209,7 +209,16 @@ export default async function OrderDetailPage({ params }: { params: { id: string
         {/* Order Details Column */}
         <Grid size={{ xs: 12, md: 8 }}>
           <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: '1px solid', borderColor: 'divider', mb: 4 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: { xs: 'stretch', sm: 'flex-start' },
+                flexDirection: { xs: 'column', sm: 'row' },
+                gap: { xs: 1.5, sm: 2 },
+                mb: 3,
+              }}
+            >
               <Box>
                 <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>Nomor Pesanan</Typography>
                 <Typography variant="h6" sx={{ fontWeight: 900, color: 'primary.dark' }}>{order.orderNumber}</Typography>
@@ -220,8 +229,18 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                   bgcolor: order.paymentStatus === 'REJECTED' ? '#dc2626' : statusBg, 
                   color: 'white', 
                   fontWeight: 900, 
-                  px: 1,
-                  fontSize: '0.75rem'
+                  px: { xs: 0.5, sm: 1 },
+                  fontSize: '0.75rem',
+                  height: 'auto',
+                  maxWidth: '100%',
+                  alignSelf: { xs: 'flex-start', sm: 'auto' },
+                  '& .MuiChip-label': {
+                    display: 'block',
+                    whiteSpace: 'normal',
+                    textAlign: 'center',
+                    lineHeight: 1.2,
+                    py: 0.7,
+                  },
                 }} 
               />
             </Box>

@@ -222,6 +222,7 @@ export default function CheckoutPage() {
                     value={formData.address}
                     onChange={handleChange}
                     sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                    InputLabelProps={{ shrink: true }}
                   />
                   <TextField
                     fullWidth
@@ -233,6 +234,7 @@ export default function CheckoutPage() {
                     value={formData.notes}
                     onChange={handleChange}
                     sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                    InputLabelProps={{ shrink: true }}
                   />
                 </Stack>
               </Paper>
