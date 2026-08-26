@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { generateOrderNumber } from '@/lib/utils';
+import { generateOrderNumber, formatCurrency } from '@/lib/utils';
 import { isStoreOpen, StoreSettings } from '@/lib/store';
-import { buildAdminWaLink } from '@/lib/order-whatsapp';
+import { buildAdminWaLink, parseRandomText } from '@/lib/order-whatsapp';
+import { sendMessage } from '@/lib/baileys';
 
 export async function POST(req: Request) {
   try {
@@ -103,6 +104,29 @@ export async function POST(req: Request) {
           orderNumber: newOrder.orderNumber,
         })
       : null;
+
+    // Notifikasi WA otomatis ke nomor notif (ADMIN_NOTIFY_WA) saat ada pesanan baru
+    const notifyWa = process.env.ADMIN_NOTIFY_WA;
+    if (notifyWa) {
+      const itemsList = newOrder.items
+        .map((i) => `- ${i.quantity}x ${i.menu.name}`)
+        .join('\n');
+      const notifMsg = parseRandomText(
+        `{🧾|📦|🛒} *PESANAN BARU MASUK*\n\n` +
+        `No. Pesanan: *${newOrder.orderNumber}*\n` +
+        `Nama: ${newOrder.customerName}\n` +
+        `Total: *${formatCurrency(newOrder.totalAmount)}*\n` +
+        `Metode: ${newOrder.paymentMethod}\n\n` +
+        `*Detail:*\n${itemsList}\n\n` +
+        `{Silakan cek dashboard admin.|Cek dashboard untuk detail lengkap.}\n` +
+        `${process.env.NEXTAUTH_URL}/admin/orders/${newOrder.id}`
+      );
+      setImmediate(() => {
+        sendMessage(notifyWa, notifMsg).catch((err) =>
+          console.error('Gagal kirim notif pesanan baru:', err)
+        );
+      });
+    }
 
     return NextResponse.json({ ...newOrder, adminWaLink }, { status: 201 });
   } catch (error) {

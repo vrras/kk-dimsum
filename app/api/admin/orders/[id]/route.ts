@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { sendMessage } from '@/lib/connekthub';
+import { sendMessage } from '@/lib/baileys';
+import { parseRandomText } from '@/lib/order-whatsapp';
 import fs from 'fs';
 import path from 'path';
 
@@ -78,25 +79,25 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const responseData = { ...updatedOrder };
 
     // --- Notifikasi WhatsApp ke Customer (Spintax Enhanced) ---
+    // Jalankan notifikasi di background tanpa memblokir response
     let messageToCustomer = '';
 
-    // Jika admin menolak pembayaran (REJECTED)
     if (paymentStatus === 'REJECTED' && currentOrder.paymentStatus !== 'REJECTED') {
-      messageToCustomer = `{❌|⚠️} *PEMBAYARAN DITOLAK*\n\n{Halo|Hai} kak ${currentOrder.customerName}, {mohon maaf|maaf banget} bukti pembayaran untuk pesanan *${currentOrder.orderNumber}* tidak dapat kami terima.\n\n*Alasan:* ${paymentRejectionReason || 'Bukti transfer tidak sesuai'}\n\nSilakan {unggah kembali|upload ulang} bukti pembayaran yang benar melalui link ini: ${process.env.NEXTAUTH_URL}/order/${currentOrder.id}\n\n{Terima kasih|Ditunggu ya}! 🙏`;
-    }
-    // Jika admin mengubah status pesanan ke PROCESSING
-    else if (orderStatus === 'PROCESSING' && currentOrder.orderStatus !== 'PROCESSING') {
+      messageToCustomer = parseRandomText(`{❌|⚠️} *PEMBAYARAN DITOLAK*\n\n{Halo|Hai} kak ${currentOrder.customerName}, {mohon maaf|maaf banget} bukti pembayaran untuk pesanan *${currentOrder.orderNumber}* tidak dapat kami terima.\n\n*Alasan:* ${paymentRejectionReason || 'Bukti transfer tidak sesuai'}\n\nSilakan {unggah kembali|upload ulang} bukti pembayaran yang benar melalui link ini: ${process.env.NEXTAUTH_URL}/order/${currentOrder.id}\n\n{Terima kasih|Ditunggu ya}! 🙏`);
+    } else if (orderStatus === 'PROCESSING' && currentOrder.orderStatus !== 'PROCESSING') {
       const paymentConfirm = currentOrder.paymentMethod === 'TRANSFER' ? 'pembayaran kamu telah kami {terima|verifikasi} dan ' : '';
-      messageToCustomer = `{👨‍🍳|🍳} *PESANAN DIPROSES*\n\n{Halo|Hai} kak ${currentOrder.customerName}, ${paymentConfirm}pesanan *${currentOrder.orderNumber}* sedang kami {siapkan|buatkan}.\n\n{Mohon ditunggu ya kak!|Ditunggu ya!|Sabar ya, sebentar lagi siap!} 🥢`;
-    }
-    // Jika pesanan batal
-    else if (orderStatus === 'CANCELLED' && currentOrder.orderStatus !== 'CANCELLED') {
-      messageToCustomer = `{❌|🚫} *PESANAN DIBATALKAN*\n\n{Mohon maaf|Maaf} kak ${currentOrder.customerName}, pesanan *${currentOrder.orderNumber}* dibatalkan.\n\nUntuk info lebih lanjut, {hubungi admin kami|silakan chat admin}.`;
+      messageToCustomer = parseRandomText(`{👨‍🍳|🍳} *PESANAN DIPROSES*\n\n{Halo|Hai} kak ${currentOrder.customerName}, ${paymentConfirm}pesanan *${currentOrder.orderNumber}* sedang kami {siapkan|buatkan}.\n\n{Mohon ditunggu ya kak!|Ditunggu ya!|Sabar ya, sebentar lagi siap!} 🥢`);
+    } else if (orderStatus === 'CANCELLED' && currentOrder.orderStatus !== 'CANCELLED') {
+      messageToCustomer = parseRandomText(`{❌|🚫} *PESANAN DIBATALKAN*\n\n{Mohon maaf|Maaf} kak ${currentOrder.customerName}, pesanan *${currentOrder.orderNumber}* dibatalkan.\n\nUntuk info lebih lanjut, {hubungi admin kami|silakan chat admin}.`);
     }
 
+    // Send WhatsApp notification in background - do not await
     if (messageToCustomer) {
-      // sendMessage will format phone number correctly
-      await sendMessage(currentOrder.customerWa, messageToCustomer).catch(console.error);
+      setImmediate(() => {
+        sendMessage(currentOrder.customerWa, messageToCustomer).catch((err) => {
+          console.error('Gagal mengirim notifikasi WhatsApp ke customer:', err);
+        });
+      });
     }
 
     return NextResponse.json(responseData);

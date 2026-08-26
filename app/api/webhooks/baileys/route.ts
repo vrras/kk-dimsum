@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { formatPhoneForCH, sendMessage } from '@/lib/connekthub';
+import { formatPhoneForBaileys, sendMessage } from '@/lib/baileys';
 import { buildWaThreadOpenedReply, extractOrderNumberFromMessage } from '@/lib/order-whatsapp';
 
-type ConnektHubInboundPayload = {
+type BaileysInboundPayload = {
   event?: string;
   from?: string;
   message?: string;
@@ -11,7 +11,7 @@ type ConnektHubInboundPayload = {
 };
 
 const getInboundReplyDelayMs = () => {
-  const raw = process.env.CONNEKTHUB_INBOUND_REPLY_DELAY_MS;
+  const raw = process.env.BAILEYS_INBOUND_REPLY_DELAY_MS;
   if (!raw) return 60_000;
 
   const parsed = Number(raw);
@@ -20,8 +20,17 @@ const getInboundReplyDelayMs = () => {
   return Math.floor(parsed);
 };
 
+// Verify webhook secret token
+const verifyWebhookAuth = (req: Request): boolean => {
+  const webhookSecret = process.env.WEBHOOK_SECRET_KEY;
+  if (!webhookSecret) return true; // Skip if not configured
+
+  const token = req.headers.get('x-api-key') || req.headers.get('x-webhook-secret') || req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+  return token === webhookSecret;
+};
+
 const findOrderByInboundMessage = async (from: string, message: string) => {
-  const normalizedSender = formatPhoneForCH(from);
+  const normalizedSender = formatPhoneForBaileys(from);
   const extractedOrderNumber = extractOrderNumberFromMessage(message);
 
   if (extractedOrderNumber) {
@@ -29,9 +38,10 @@ const findOrderByInboundMessage = async (from: string, message: string) => {
       where: { orderNumber: extractedOrderNumber },
     });
 
-    if (order && formatPhoneForCH(order.customerWa) === normalizedSender) {
-      return order;
-    }
+    // The customer sends the confirmation to the admin number, so the
+    // inbound sender is the admin/bot JID, not the customer's checkout number.
+    // The order number is the authoritative match.
+    if (order) return order;
   }
 
   const phoneTail = normalizedSender.slice(-8);
@@ -47,7 +57,7 @@ const findOrderByInboundMessage = async (from: string, message: string) => {
     take: 5,
   });
 
-  const exactMatches = candidates.filter((candidate) => formatPhoneForCH(candidate.customerWa) === normalizedSender);
+  const exactMatches = candidates.filter((candidate) => formatPhoneForBaileys(candidate.customerWa) === normalizedSender);
 
   if (exactMatches.length === 1) {
     return exactMatches[0];
@@ -57,8 +67,13 @@ const findOrderByInboundMessage = async (from: string, message: string) => {
 };
 
 export async function POST(req: Request) {
+  // Verify webhook auth
+  if (!verifyWebhookAuth(req)) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+
   try {
-    const body = (await req.json()) as ConnektHubInboundPayload;
+    const body = (await req.json()) as BaileysInboundPayload;
 
     if (body.event !== 'message.received' || !body.from || !body.message) {
       return NextResponse.json({ ok: true, ignored: true });
@@ -84,6 +99,7 @@ export async function POST(req: Request) {
 
     if (!wasAlreadyOpened) {
       const delayMs = getInboundReplyDelayMs();
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
       await sendMessage(
         matchedOrder.customerWa,
         buildWaThreadOpenedReply({
@@ -92,14 +108,13 @@ export async function POST(req: Request) {
           orderNumber: matchedOrder.orderNumber,
           paymentMethod: matchedOrder.paymentMethod,
           totalAmount: matchedOrder.totalAmount,
-        }),
-        { delayMs }
+        })
       );
     }
 
     return NextResponse.json({ ok: true, matched: true, orderId: matchedOrder.id });
   } catch (error) {
-    console.error('ConnektHub webhook error:', error);
-    return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 });
+    console.error('Order webhook error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

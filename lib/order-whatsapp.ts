@@ -13,9 +13,16 @@ export const buildOrderDetailUrl = (orderId: string) => {
   return `${baseUrl}/order/${orderId}`;
 };
 
+export const parseRandomText = (text: string) => {
+  return text.replace(/\{([^}]+)\}/g, (_, choices) => {
+    const options = choices.split('|');
+    return options[Math.floor(Math.random() * options.length)];
+  });
+};
+
 export const buildAdminOrderPrefillText = (order: Pick<OrderWhatsAppPayload, 'orderNumber'>) => {
   return [
-    'Halo Putri, saya sudah checkout ya.',
+    'Halo Kak, saya sudah checkout ya.',
     `Order ID: ${order.orderNumber}`,
     'Mohon dibantu proses pesanan saya. Terima kasih.',
   ].join('\n');
@@ -38,7 +45,7 @@ export const buildWaThreadOpenedReply = (order: OrderWhatsAppPayload) => {
   const detailUrl = buildOrderDetailUrl(order.orderId);
 
   if (order.paymentMethod === 'TRANSFER') {
-    return [
+    return parseRandomText([
       `{Halo|Hai|Halo Kak} ${order.customerName}, {terima kasih|makasih|thanks} telah memesan di *KK Dimsum*! 🧾`,
       `*No. Pesanan: ${order.orderNumber}*`,
       `💰 *Total Tagihan: ${formatCurrency(order.totalAmount)}*`,
@@ -46,10 +53,10 @@ export const buildWaThreadOpenedReply = (order: OrderWhatsAppPayload) => {
       `Silakan lakukan transfer dan *unggah bukti pembayaran* melalui link di bawah ini agar pesanan dapat {segera kami proses|langsung kami buatkan|cepat kami siapkan}:`,
       detailUrl,
       '{Terima kasih|Ditunggu ya|Kami tunggu konfirmasinya}! 🥟💕',
-    ].join('\n\n');
+    ].join('\n\n'));
   }
 
-  return [
+  return parseRandomText([
     `{Hai|Halo|Halo Kak} ${order.customerName}, pesanan kamu (*${order.orderNumber}*) telah kami {terima|proses}! 🧾`,
     `*No. Pesanan: ${order.orderNumber}*`,
     `💰 *Total Tagihan: ${formatCurrency(order.totalAmount)}*`,
@@ -58,5 +65,5 @@ export const buildWaThreadOpenedReply = (order: OrderWhatsAppPayload) => {
     'Cek detail pesanan kamu di sini:',
     detailUrl,
     `{Ditunggu pesanannya|Terima kasih sudah pesan|Sampai jumpa di pesananmu} di *KK Dimsum*! 🥟💕`,
-  ].join('\n\n');
+  ].join('\n\n'));
 };

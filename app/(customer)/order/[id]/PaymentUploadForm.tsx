@@ -11,11 +11,11 @@ import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import Stack from '@mui/material/Stack';
 
-export default function PaymentUploadForm({ orderId, existingProof }: { orderId: string, existingProof: string | null }) {
+export default function PaymentUploadForm({ orderId, existingProof, paymentStatus }: { orderId: string, existingProof: string | null, paymentStatus: string }) {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(existingProof ? true : false);
+  const [success, setSuccess] = useState(!!existingProof && paymentStatus !== 'REJECTED');
   const router = useRouter();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,13 +72,34 @@ export default function PaymentUploadForm({ orderId, existingProof }: { orderId:
 
   if (success && !file) {
     return (
-      <Alert 
-        severity="success" 
+      <Alert
+        severity="success"
         icon={<CheckCircle2 size={24} />}
-        sx={{ 
-          borderRadius: 3, 
-          bgcolor: '#f0fdf4', 
-          border: '1px solid', 
+        sx={{
+          borderRadius: 3,
+          bgcolor: '#f0fdf4',
+          border: '1px solid',
+          borderColor: 'success.light',
+          '& .MuiAlert-message': { width: '100%' }
+        }}
+      >
+        <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>Bukti Pembayaran Tersimpan</Typography>
+        <Typography variant="caption">Menunggu verifikasi admin kami.</Typography>
+      </Alert>
+    );
+  }
+
+  // Jika sudah ada bukti dan status bukan REJECTED, tampilkan alert sukses
+  // (Ini menangani kasus saat halaman refresh setelah upload)
+  if (existingProof && paymentStatus !== 'REJECTED') {
+    return (
+      <Alert
+        severity="success"
+        icon={<CheckCircle2 size={24} />}
+        sx={{
+          borderRadius: 3,
+          bgcolor: '#f0fdf4',
+          border: '1px solid',
           borderColor: 'success.light',
           '& .MuiAlert-message': { width: '100%' }
         }}
@@ -94,7 +115,7 @@ export default function PaymentUploadForm({ orderId, existingProof }: { orderId:
       <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 2, color: 'primary.dark' }}>
         Unggah Bukti Transfer
       </Typography>
-      
+
       {error && (
         <Alert severity="error" icon={<AlertCircle size={18} />} sx={{ mb: 2, borderRadius: 2, fontSize: '0.8rem' }}>
           {error}

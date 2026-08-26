@@ -3,6 +3,8 @@ import { ArrowLeft, CheckCircle2, XCircle, FileIcon, MessageCircle, Package, Map
 import Link from 'next/link';
 import prisma from '@/lib/prisma';
 import PaymentUploadForm from './PaymentUploadForm';
+import OrderAutoRefresh from './OrderAutoRefresh';
+import OrderPageClient from './OrderPageClient';
 import { redirect } from 'next/navigation';
 import { buildAdminWaLink } from '@/lib/order-whatsapp';
 import Container from '@mui/material/Container';
@@ -180,7 +182,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                 variant="caption"
                 sx={{ display: 'block', mb: 2, color: 'warning.dark', fontWeight: 700, lineHeight: 1.6 }}
               >
-                Gunakan nomor WhatsApp yang sama dengan nomor yang kamu isi saat checkout. Jika berbeda, konfirmasi otomatis tidak akan terbaca sistem.
+                Notifikasi dan balasan pesanan akan dikirim ke nomor WhatsApp yang kamu masukkan saat checkout. Pastikan nomor tersebut aktif.
               </Typography>
             )}
             <Button
@@ -329,7 +331,11 @@ export default async function OrderDetailPage({ params }: { params: { id: string
               </Typography>
 
               {order.waThreadOpened ? (
-                <PaymentUploadForm orderId={order.id} existingProof={null} />
+                <PaymentUploadForm
+                  orderId={order.id}
+                  existingProof={order.paymentProof}
+                  paymentStatus={order.paymentStatus}
+                />
               ) : (
                 <Alert severity="warning" sx={{ borderRadius: 3, bgcolor: '#fff7ed', border: '1px solid', borderColor: '#fdba74' }}>
                   Kirim konfirmasi WhatsApp ke admin terlebih dulu. Upload bukti transfer akan aktif setelah chat kamu diterima sistem.
@@ -339,7 +345,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
           )}
 
           {/* Payment Proof Processing */}
-          {order.paymentMethod === 'TRANSFER' && order.paymentProof && order.paymentStatus === 'UNPAID' && order.orderStatus !== 'CANCELLED' && (
+          {order.paymentProof && order.paymentStatus === 'UNPAID' && order.orderStatus !== 'CANCELLED' && (
             <Alert icon={<FileIcon size={24} />} severity="info" sx={{ mb: 4, borderRadius: 4, bgcolor: '#f0f9ff', border: '1px solid', borderColor: '#bae6fd' }}>
               <AlertTitle sx={{ fontWeight: 900 }}>Bukti Pembayaran Diunggah</AlertTitle>
               Admin kami sedang memverifikasi pembayaran Anda. Mohon tunggu sebentar.
@@ -433,7 +439,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                   variant="caption"
                   sx={{ display: 'block', mb: 2, color: 'warning.dark', fontWeight: 700, lineHeight: 1.6 }}
                 >
-                  Gunakan nomor WhatsApp yang sama dengan nomor yang kamu isi saat checkout. Jika berbeda, konfirmasi otomatis tidak akan terbaca sistem.
+                  Notifikasi dan balasan pesanan akan dikirim ke nomor WhatsApp yang kamu masukkan saat checkout. Pastikan nomor tersebut aktif.
                 </Typography>
               )}
               <Button
@@ -460,6 +466,12 @@ export default async function OrderDetailPage({ params }: { params: { id: string
           </Stack>
         </Grid>
       </Grid>
+
+      {/* Auto-refresh status pesanan setiap 1 menit */}
+      <OrderAutoRefresh intervalMs={60000} />
+
+      {/* Supabase Realtime: listen for order updates */}
+      <OrderPageClient orderId={order.id} />
     </Container>
   );
 }

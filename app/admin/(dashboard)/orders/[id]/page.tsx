@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import AdminOrdersRealtimeListener from '../AdminOrdersRealtimeListener';
 import {
   Box,
   Typography,
@@ -595,6 +596,9 @@ export default function AdminOrderDetailPage({ params }: { params: { id: string 
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Supabase Realtime: reload detail on order change */}
+      <AdminOrdersRealtimeListener orderId={params.id} />
     </Box>
   );
 }

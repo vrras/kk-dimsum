@@ -60,7 +60,32 @@ export default function CheckoutPage() {
     }
   }, [totalItems, router, mounted, isSubmitting]);
 
-  if (!mounted || totalItems === 0) return null;
+  if (!mounted) return null;
+
+  if (totalItems === 0) {
+    if (isSubmitting) {
+      return (
+        <Container maxWidth="sm" sx={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Stack spacing={2} alignItems="center">
+            <CircularProgress color="primary" />
+            <Typography color="primary.dark" fontWeight={700}>Menyiapkan detail pesanan…</Typography>
+          </Stack>
+        </Container>
+      );
+    }
+    return (
+      <Container maxWidth="sm" sx={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+        <Stack spacing={2} alignItems="center">
+          <ShoppingBag size={56} color="#db2777" />
+          <Typography variant="h5" color="primary.dark" fontWeight={800}>Keranjang masih kosong</Typography>
+          <Typography color="text.secondary">Tambahkan menu terlebih dahulu sebelum checkout.</Typography>
+          <Button component={Link} href="/" variant="contained" color="primary" sx={{ borderRadius: 3, fontWeight: 800 }}>
+            Lihat Menu
+          </Button>
+        </Stack>
+      </Container>
+    );
+  }
 
   const handleApplyPromo = async () => {
     if (!promoCode) return;

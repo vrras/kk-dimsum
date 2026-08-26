@@ -3,8 +3,9 @@
 import { uploadFile } from './storage';
 import prisma from './prisma';
 import { revalidatePath } from 'next/cache';
-import { sendMessage } from './connekthub';
+import { sendMessage } from './baileys';
 import { formatCurrency } from './utils';
+import { parseRandomText } from './order-whatsapp';
 import fs from 'fs';
 import path from 'path';
 
@@ -82,13 +83,19 @@ export async function uploadPaymentProofAction(orderId: string, formData: FormDa
       }
     });
 
-    // Send Notification to Admin
-    const settings = await prisma.settings.findFirst();
-    const adminWaInfo = settings?.waNumber;
-    
+    // Send Notification to Admin (via ADMIN_NOTIFY_WA)
+    const adminWaInfo = process.env.ADMIN_NOTIFY_WA || '';
+
     if (adminWaInfo) {
-      const adminMsg = `{💳|💰} *BUKTI TRANSFER DIUNGGAH*\n\nNomor: *${order.orderNumber}*\nNama: ${order.customerName}\nTotal: *${formatCurrency(order.totalAmount)}*\n\n{Customer|Pelanggan} telah mengunggah bukti pembayaran.\nSilakan cek di dashboard admin untuk verifikasi.\n${process.env.NEXTAUTH_URL}/admin/orders/${order.id}`;
-      await sendMessage(adminWaInfo, adminMsg);
+      const adminMsg = parseRandomText(`{💳|💰} *BUKTI TRANSFER DIUNGGAH*\n\nNomor: *${order.orderNumber}*\nNama: ${order.customerName}\nTotal: *${formatCurrency(order.totalAmount)}*\n\n{Customer|Pelanggan} telah mengunggah bukti pembayaran.\nSilakan cek di dashboard admin untuk verifikasi.\n${process.env.NEXTAUTH_URL}/admin/orders/${order.id}`);
+      // Notification should not block the payment-proof upload itself.
+      // Baileys/network failures are logged, while the proof remains saved.
+      await Promise.race([
+        sendMessage(adminWaInfo, adminMsg),
+        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 10_000)),
+      ]).catch((notificationError) => {
+        console.error('Gagal mengirim notifikasi bukti pembayaran via Baileys:', notificationError);
+      });
     }
 
     revalidatePath(`/order/${orderId}`);

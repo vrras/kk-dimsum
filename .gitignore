@@ -50,3 +50,11 @@ next-env.d.ts
 
 # files
 /public/uploads/*
+
+# docker build output
+.next
+
+# env backups
+.env.save
+.env.*
+!.env.example

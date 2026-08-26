@@ -1,0 +1,28 @@
+services:
+  kk-dimsum:
+    build: 
+      context: .
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    container_name: kk-dimsum
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    ports:
+      - "127.0.0.1:3002:3000"
+    volumes:
+      - kk-dimsum-uploads:/app/public/uploads
+    networks:
+      - kk-wa-net
+
+volumes:
+  kk-dimsum-uploads:
+
+networks:
+  kk-wa-net:
+    external: true

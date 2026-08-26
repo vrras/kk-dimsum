@@ -5,6 +5,7 @@ import { formatCurrency } from '@/lib/utils';
 import { Eye, Search, Filter } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import AdminOrdersRealtimeListener from './AdminOrdersRealtimeListener';
 
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -256,6 +257,9 @@ export default function AdminOrdersPage() {
           </TableContainer>
         )}
       </Card>
+
+      {/* Supabase Realtime: reload list on any order change */}
+      <AdminOrdersRealtimeListener />
     </Box>
   );
 }
