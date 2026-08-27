@@ -10,10 +10,7 @@ jobs:
     name: Trigger Coolify deploy
     runs-on: ubuntu-latest
     steps:
-      # NB: konteks `secrets` hanya valid di level step, BUKAN level job.
-
       - name: Install deploy key
-        if: ${{ secrets.COOLIFY_DEPLOY_KEY != '' }}
         env:
           KEY: ${{ secrets.COOLIFY_DEPLOY_KEY }}
         run: |
@@ -22,13 +19,8 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
 
       - name: Trigger deploy on server
-        if: ${{ secrets.COOLIFY_DEPLOY_KEY != '' }}
         run: |
           ssh -i ~/.ssh/deploy_key \
               -o StrictHostKeyChecking=accept-new \
               -o ConnectTimeout=15 \
               coolify@217.216.110.192
-
-      - name: Notice saat secret belum dipasang
-        if: ${{ secrets.COOLIFY_DEPLOY_KEY == '' }}
-        run: echo "::warning::Secret COOLIFY_DEPLOY_KEY belum diisi — deploy dilewati tanpa gagal."
