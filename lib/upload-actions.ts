@@ -83,19 +83,41 @@ export async function uploadPaymentProofAction(orderId: string, formData: FormDa
       }
     });
 
-    // Send Notification to Admin (via ADMIN_NOTIFY_WA)
+    // Send Notification to Admin (via ADMIN_NOTIFY_WA) with retry logic
     const adminWaInfo = process.env.ADMIN_NOTIFY_WA || '';
 
     if (adminWaInfo) {
       const adminMsg = parseRandomText(`{💳|💰} *BUKTI TRANSFER DIUNGGAH*\n\nNomor: *${order.orderNumber}*\nNama: ${order.customerName}\nTotal: *${formatCurrency(order.totalAmount)}*\n\n{Customer|Pelanggan} telah mengunggah bukti pembayaran.\nSilakan cek di dashboard admin untuk verifikasi.\n${process.env.NEXTAUTH_URL}/admin/orders/${order.id}`);
-      // Notification should not block the payment-proof upload itself.
-      // Baileys/network failures are logged, while the proof remains saved.
-      await Promise.race([
-        sendMessage(adminWaInfo, adminMsg),
-        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 10_000)),
-      ]).catch((notificationError) => {
-        console.error('Gagal mengirim notifikasi bukti pembayaran via Baileys:', notificationError);
-      });
+      
+      // Retry logic: 3 attempts with exponential backoff
+      const maxRetries = 3;
+      let retryDelay = 2000; // Start with 2 seconds
+      let notificationSent = false;
+      
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          const success = await sendMessage(adminWaInfo, adminMsg);
+          if (success) {
+            notificationSent = true;
+            console.log(`✅ Upload notification sent to admin on attempt ${attempt}/${maxRetries}`);
+            break;
+          } else {
+            console.warn(`⚠️ Upload notification failed on attempt ${attempt}/${maxRetries}`);
+          }
+        } catch (err) {
+          console.error(`❌ Upload notification error on attempt ${attempt}/${maxRetries}:`, err);
+        }
+        
+        // Wait before next retry (exponential backoff)
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          retryDelay *= 2; // Double delay for next retry
+        }
+      }
+      
+      if (!notificationSent) {
+        console.error('❌ Failed to send upload notification after', maxRetries, 'attempts');
+      }
     }
 
     revalidatePath(`/order/${orderId}`);
