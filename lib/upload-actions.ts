@@ -87,7 +87,14 @@ export async function uploadPaymentProofAction(orderId: string, formData: FormDa
     const adminWaInfo = process.env.ADMIN_NOTIFY_WA || '';
 
     if (adminWaInfo) {
-      const adminMsg = parseRandomText(`{💳|💰} *BUKTI TRANSFER DIUNGGAH*\n\nNomor: *${order.orderNumber}*\nNama: ${order.customerName}\nTotal: *${formatCurrency(order.totalAmount)}*\n\n{Customer|Pelanggan} telah mengunggah bukti pembayaran.\nSilakan cek di dashboard admin untuk verifikasi.\n${process.env.NEXTAUTH_URL}/admin/orders/${order.id}`);
+      // Simplified message without emojis, bold formatting, or links to avoid WhatsApp spam filtering
+      const adminMsg = `Bukti transfer diunggah
+
+Nomor: ${order.orderNumber}
+Nama: ${order.customerName}
+Total: ${formatCurrency(order.totalAmount)}
+
+Pelanggan telah mengunggah bukti pembayaran. Silakan cek di dashboard admin untuk verifikasi. Order ID: ${order.id}`;
       
       // Retry logic: 3 attempts with exponential backoff
       const maxRetries = 3;
