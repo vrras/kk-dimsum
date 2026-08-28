@@ -3,7 +3,6 @@ import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sendMessage } from '@/lib/baileys';
-import { parseRandomText } from '@/lib/order-whatsapp';
 import fs from 'fs';
 import path from 'path';
 
@@ -78,17 +77,17 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
     const responseData = { ...updatedOrder };
 
-    // --- Notifikasi WhatsApp ke Customer (Spintax Enhanced) ---
+    // --- Notifikasi WhatsApp ke Customer (Simplified, No Emojis or Bold Formatting) ---
     // Jalankan notifikasi di background tanpa memblokir response
     let messageToCustomer = '';
 
     if (paymentStatus === 'REJECTED' && currentOrder.paymentStatus !== 'REJECTED') {
-      messageToCustomer = parseRandomText(`{❌|⚠️} *PEMBAYARAN DITOLAK*\n\n{Halo|Hai} kak ${currentOrder.customerName}, {mohon maaf|maaf banget} bukti pembayaran untuk pesanan *${currentOrder.orderNumber}* tidak dapat kami terima.\n\n*Alasan:* ${paymentRejectionReason || 'Bukti transfer tidak sesuai'}\n\nSilakan {unggah kembali|upload ulang} bukti pembayaran yang benar melalui link ini: ${process.env.NEXTAUTH_URL}/order/${currentOrder.id}\n\n{Terima kasih|Ditunggu ya}! 🙏`);
+      messageToCustomer = `Halo kak ${currentOrder.customerName}, mohon maaf bukti pembayaran untuk pesanan ${currentOrder.orderNumber} tidak dapat kami terima.\n\nAlasan: ${paymentRejectionReason || 'Bukti transfer tidak sesuai'}\n\nSilakan upload ulang bukti pembayaran yang benar melalui link ini: ${process.env.NEXTAUTH_URL}/order/${currentOrder.id}\n\nTerima kasih!`;
     } else if (orderStatus === 'PROCESSING' && currentOrder.orderStatus !== 'PROCESSING') {
-      const paymentConfirm = currentOrder.paymentMethod === 'TRANSFER' ? 'pembayaran kamu telah kami {terima|verifikasi} dan ' : '';
-      messageToCustomer = parseRandomText(`{👨‍🍳|🍳} *PESANAN DIPROSES*\n\n{Halo|Hai} kak ${currentOrder.customerName}, ${paymentConfirm}pesanan *${currentOrder.orderNumber}* sedang kami {siapkan|buatkan}.\n\n{Mohon ditunggu ya kak!|Ditunggu ya!|Sabar ya, sebentar lagi siap!} 🥢`);
+      const paymentConfirm = currentOrder.paymentMethod === 'TRANSFER' ? 'pembayaran kamu telah kami terima dan ' : '';
+      messageToCustomer = `Halo kak ${currentOrder.customerName}, ${paymentConfirm}pesanan ${currentOrder.orderNumber} sedang kami siapkan.\n\nMohon ditunggu ya kak!`;
     } else if (orderStatus === 'CANCELLED' && currentOrder.orderStatus !== 'CANCELLED') {
-      messageToCustomer = parseRandomText(`{❌|🚫} *PESANAN DIBATALKAN*\n\n{Mohon maaf|Maaf} kak ${currentOrder.customerName}, pesanan *${currentOrder.orderNumber}* dibatalkan.\n\nUntuk info lebih lanjut, {hubungi admin kami|silakan chat admin}.`);
+      messageToCustomer = `Mohon maaf kak ${currentOrder.customerName}, pesanan ${currentOrder.orderNumber} dibatalkan.\n\nUntuk info lebih lanjut, silakan chat admin.`;
     }
 
     // Send WhatsApp notification in background - do not await
