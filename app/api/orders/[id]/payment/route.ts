@@ -4,7 +4,6 @@ import fs from 'fs';
 import path from 'path';
 import { sendMessage } from '@/lib/baileys';
 import { formatCurrency } from '@/lib/utils';
-import { parseRandomText } from '@/lib/order-whatsapp';
 import { uploadFile } from '@/lib/storage';
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
@@ -60,11 +59,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const adminWaInfo = process.env.ADMIN_NOTIFY_WA || '';
 
     if (adminWaInfo) {
-      const adminMsg = parseRandomText(`{💳|💰} *BUKTI TRANSFER DIUNGGAH*\n\nNomor: *${order.orderNumber}*\nNama: ${order.customerName}\nTotal: *${formatCurrency(order.totalAmount)}*\n\n{Customer|Pelanggan} telah mengunggah bukti pembayaran.\nSilakan cek di dashboard admin untuk verifikasi.\n${process.env.NEXTAUTH_URL}/admin/orders/${order.id}`);
+      const adminMsg = `Bukti transfer diunggah\n\nNomor: ${order.orderNumber}\nNama: ${order.customerName}\nTotal: ${formatCurrency(order.totalAmount)}\n\nPelanggan telah mengunggah bukti pembayaran. Silakan cek di dashboard admin untuk verifikasi. Order ID: ${order.id}`;
       // sendMessage automatically formats the number now
       await sendMessage(adminWaInfo, adminMsg);
     } else {
-      console.warn("⚠️ Notifikasi admin dilewati: ADMIN_NOTIFY_WA belum diatur.");
+      console.warn("Notifikasi admin dilewati: ADMIN_NOTIFY_WA belum diatur.");
     }
 
     return NextResponse.json({ success: true, paymentProof: relativePath }, { status: 200 });
