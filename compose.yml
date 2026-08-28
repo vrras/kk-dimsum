@@ -13,16 +13,34 @@ services:
       PORT: 3000
       NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.kkdimsum.rule=Host(`kkdimsum.store`) || Host(`www.kkdimsum.store`)
+      - traefik.http.routers.kkdimsum.entrypoints=https
+      - traefik.http.routers.kkdimsum.tls.certresolver=letsencrypt
+      - traefik.http.routers.kkdimsum-http.rule=Host(`kkdimsum.store`) || Host(`www.kkdimsum.store`)
+      - traefik.http.routers.kkdimsum-http.entrypoints=http
+      - traefik.http.routers.kkdimsum-http.middlewares=kkdimsum-redir
+      - traefik.http.middlewares.kkdimsum-redir.redirectscheme.scheme=https
+      - traefik.http.middlewares.kkdimsum-redir.redirectscheme.permanent=true
+      - traefik.http.services.kkdimsum.loadbalancer.server.port=3000
     ports:
       - "127.0.0.1:3002:3000"
     volumes:
       - kk-dimsum-uploads:/app/public/uploads
     networks:
-      - kk-wa-net
+      kk-wa-net:
+        aliases:
+          - kk-dimsum
+      coolify:
+        aliases:
+          - kk-dimsum
 
 volumes:
   kk-dimsum-uploads:
 
 networks:
   kk-wa-net:
+    external: true
+  coolify:
     external: true

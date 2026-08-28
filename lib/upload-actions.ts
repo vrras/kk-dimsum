@@ -5,7 +5,6 @@ import prisma from './prisma';
 import { revalidatePath } from 'next/cache';
 import { sendMessage } from './baileys';
 import { formatCurrency } from './utils';
-import { parseRandomText } from './order-whatsapp';
 import fs from 'fs';
 import path from 'path';
 

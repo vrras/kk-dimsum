@@ -37,3 +37,6 @@ COPY --from=builder /app/prisma ./prisma
 RUN mkdir -p /app/public/uploads
 EXPOSE 3000
 CMD ["node", "server.js"]
+
+# Coolify network aliases label
+LABEL coolify.networkAliases="kk-dimsum"

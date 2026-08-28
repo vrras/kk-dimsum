@@ -13,13 +13,6 @@ export const buildOrderDetailUrl = (orderId: string) => {
   return `${baseUrl}/order/${orderId}`;
 };
 
-export const parseRandomText = (text: string) => {
-  return text.replace(/\{([^}]+)\}/g, (_, choices) => {
-    const options = choices.split('|');
-    return options[Math.floor(Math.random() * options.length)];
-  });
-};
-
 export const buildAdminOrderPrefillText = (order: Pick<OrderWhatsAppPayload, 'orderNumber'>) => {
   return [
     'Halo Kak, saya sudah checkout ya.',
@@ -45,25 +38,23 @@ export const buildWaThreadOpenedReply = (order: OrderWhatsAppPayload) => {
   const detailUrl = buildOrderDetailUrl(order.orderId);
 
   if (order.paymentMethod === 'TRANSFER') {
-    return parseRandomText([
-      `{Halo|Hai|Halo Kak} ${order.customerName}, {terima kasih|makasih|thanks} telah memesan di *KK Dimsum*! 🧾`,
-      `*No. Pesanan: ${order.orderNumber}*`,
-      `💰 *Total Tagihan: ${formatCurrency(order.totalAmount)}*`,
-      '💳 *Metode Bayar: Transfer Bank*',
-      `Silakan lakukan transfer dan *unggah bukti pembayaran* melalui link di bawah ini agar pesanan dapat {segera kami proses|langsung kami buatkan|cepat kami siapkan}:`,
-      detailUrl,
-      '{Terima kasih|Ditunggu ya|Kami tunggu konfirmasinya}! 🥟💕',
-    ].join('\n\n'));
+    return [
+      `Halo Kak ${order.customerName}, terima kasih telah memesan di KK Dimsum.`,
+      `No. Pesanan: ${order.orderNumber}`,
+      `Total Tagihan: ${formatCurrency(order.totalAmount)}`,
+      `Metode Bayar: Transfer Bank`,
+      `Silakan lakukan transfer dan unggah bukti pembayaran melalui link di bawah ini agar pesanan dapat segera kami proses: ${detailUrl}`,
+      `Terima kasih!`,
+    ].join('\n\n');
   }
 
-  return parseRandomText([
-    `{Hai|Halo|Halo Kak} ${order.customerName}, pesanan kamu (*${order.orderNumber}*) telah kami {terima|proses}! 🧾`,
-    `*No. Pesanan: ${order.orderNumber}*`,
-    `💰 *Total Tagihan: ${formatCurrency(order.totalAmount)}*`,
-    '💳 *Metode Bayar: COD / Bayar Tunai*',
-    'Mohon siapkan pembayaran saat pesanan tiba ya kak.',
-    'Cek detail pesanan kamu di sini:',
-    detailUrl,
-    `{Ditunggu pesanannya|Terima kasih sudah pesan|Sampai jumpa di pesananmu} di *KK Dimsum*! 🥟💕`,
-  ].join('\n\n'));
+  return [
+    `Halo Kak ${order.customerName}, pesanan kamu (${order.orderNumber}) telah kami terima.`,
+    `No. Pesanan: ${order.orderNumber}`,
+    `Total Tagihan: ${formatCurrency(order.totalAmount)}`,
+    `Metode Bayar: COD / Bayar Tunai`,
+    `Mohon siapkan pembayaran saat pesanan tiba ya kak.`,
+    `Cek detail pesanan kamu di sini: ${detailUrl}`,
+    `Terima kasih sudah pesan di KK Dimsum!`,
+  ].join('\n\n');
 };
