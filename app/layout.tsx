@@ -3,14 +3,14 @@ import './globals.css'
 import { CartProvider } from '@/components/CartProvider'
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v14-appRouter'
 import ThemeWrapper from '@/components/ThemeWrapper'
-import prisma from '@/lib/prisma'
+import { getSiteSettings } from '@/lib/cached-data'
 
 export async function generateMetadata(): Promise<Metadata> {
   let storeName = 'Nama Toko'
   let description = 'Pesan jajanan dimsum favoritmu secara online sekarang juga!'
   
   try {
-    const settings = await prisma.settings.findFirst()
+    const settings = await getSiteSettings()
     if (settings?.storeName) {
       storeName = settings.storeName
     }

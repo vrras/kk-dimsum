@@ -1,5 +1,5 @@
-import prisma from '@/lib/prisma'
 import Link from 'next/link'
+import { getMenuList, getCategoryList, getSiteSettings } from '@/lib/cached-data'
 import { FloatingCart } from '@/components/AddToCartButton'
 import SearchInput from '@/components/SearchInput'
 import Container from '@mui/material/Container'
@@ -21,33 +21,19 @@ export default async function CustomerHomePage({
 }) {
   const { category, search } = searchParams;
 
-  // Build query
-  const where: { isAvailable: boolean; category?: { name: string }; name?: { contains: string } } = { isAvailable: true };
-  if (category) {
-    where.category = { name: category };
-  }
-  if (search) {
-    where.name = { contains: search };
-  }
-
   const [menus, categories, settings] = await Promise.all([
-    prisma.menu.findMany({
-      where,
-      include: { category: true },
-      orderBy: { categoryId: 'asc' }
-    }),
-    prisma.category.findMany({
-      where: {
-        menus: {
-          some: {
-            isAvailable: true
-          }
-        }
-      },
-      orderBy: { name: 'asc' }
-    }),
-    prisma.settings.findFirst()
+    getMenuList(),
+    getCategoryList(),
+    getSiteSettings(),
   ]);
+
+  // Filter kategori & search dilakukan di memory dari hasil cache
+  // (semantik identik dengan `contains` Postgres: case-sensitive).
+  const filteredMenus = menus.filter((m) => {
+    if (category && m.category?.name !== category) return false
+    if (search && !m.name.includes(search)) return false
+    return true
+  });
 
   const storeName = settings?.storeName || 'Nama Toko';
 
@@ -217,7 +203,7 @@ export default async function CustomerHomePage({
         </Box>
 
         {/* Menu Grid */}
-        {menus.length === 0 ? (
+        {filteredMenus.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 10 }}>
             <Typography variant="h5" color="text.secondary" sx={{ fontWeight: 600 }}>
               Menu tidak ditemukan.
@@ -239,7 +225,7 @@ export default async function CustomerHomePage({
               gap: { xs: 1.5, sm: 2, md: 3 } 
             }}
           >
-            {menus.map((menu: { id: string; name: string; price: number; imageUrl: string | null; description: string | null; category?: { name: string } | null }) => (
+            {filteredMenus.map((menu: { id: string; name: string; price: number; imageUrl: string | null; description: string | null; category?: { name: string } | null }) => (
               <MenuCard key={menu.id} menu={menu} storeName={storeName} />
             ))}
           </Box>

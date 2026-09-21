@@ -2,6 +2,7 @@ import { formatCurrency } from '@/lib/utils';
 import { ArrowLeft, CheckCircle2, XCircle, FileIcon, MessageCircle, Package, MapPin, CreditCard, Phone, User, Notebook } from 'lucide-react';
 import Link from 'next/link';
 import prisma from '@/lib/prisma';
+import { getSiteSettings } from '@/lib/cached-data';
 import PaymentUploadForm from './PaymentUploadForm';
 import OrderAutoRefresh from './OrderAutoRefresh';
 import OrderPageClient from './OrderPageClient';
@@ -45,7 +46,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
         }
       }
     }),
-    prisma.settings.findFirst()
+    getSiteSettings()
   ]);
 
   const storeName = settings?.storeName || 'Nama Toko';
